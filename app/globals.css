@@ -1,0 +1,21 @@
+/* Phase 0：最小重置。完整纸感设计 token 在 Phase 1 从 legacy-prototype/styles.css 移植。 */
+:root {
+  --paper: #fbf7ef;
+  --ink: #17243d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+}
