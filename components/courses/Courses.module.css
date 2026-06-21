@@ -1,0 +1,374 @@
+/* 课程空间：列表（关注页式）/ 课程主页（小红书用户页式）/ 动态详情（笔记页式）。 */
+
+.view {
+  max-width: 1100px;
+  margin: auto;
+  padding: 28px clamp(25px, 4.2vw, 70px) 80px;
+}
+
+.pageHead {
+  margin: 6px 0 22px;
+}
+.eyebrow {
+  margin: 0 0 8px;
+  letter-spacing: 1.45px;
+  color: #8490a2;
+  font-size: 10px;
+  font-weight: 800;
+}
+.pageHead h1 {
+  margin: 0;
+  font-size: clamp(28px, 3.4vw, 44px);
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 1.1;
+}
+.pageHead h1 i {
+  color: #ee725c;
+  font-family: Georgia, "Noto Serif SC", serif;
+  font-style: normal;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  color: #768297;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.backLink:hover {
+  color: var(--ink);
+}
+
+/* ---- 横滑课程头像栏 ---- */
+.avatarBar {
+  display: flex;
+  gap: 18px;
+  padding: 6px 2px 18px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 22px;
+}
+.courseAvatar {
+  flex: 0 0 auto;
+  width: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--ink);
+}
+.avatarDisc {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px 20px 8px 20px;
+  font-size: 22px;
+  font-weight: 850;
+  color: var(--ink);
+  transform: rotate(-4deg);
+  transition: transform 0.15s ease;
+}
+.courseAvatar:hover .avatarDisc {
+  transform: rotate(0) scale(1.04);
+}
+.dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 2px solid var(--paper);
+  background: #f06e59;
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+}
+.courseAvatar small {
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* ---- 综合动态流 / 瀑布流 ---- */
+.feed {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.sectionLabel {
+  margin: 0 0 14px;
+  letter-spacing: 1.45px;
+  color: #8490a2;
+  font-size: 10px;
+  font-weight: 800;
+}
+.postCard {
+  display: flex;
+  flex-direction: column;
+  min-height: 150px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--white);
+  text-decoration: none;
+  color: var(--ink);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.postCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(27, 40, 64, 0.07);
+}
+.postMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #97a0ad;
+  font-size: 10px;
+}
+.tinyAvatar {
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--ink);
+  font-size: 9px;
+  font-weight: 800;
+}
+.postMeta b {
+  color: #5f6d81;
+}
+.postCard h3 {
+  margin: 13px 0 8px;
+  font-size: 16px;
+  letter-spacing: -0.5px;
+  line-height: 1.4;
+}
+.postCard p {
+  margin: 0;
+  color: #7a8797;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.postFoot {
+  margin-top: auto;
+  padding-top: 12px;
+  display: flex;
+  gap: 10px;
+  color: #93a0af;
+  font-size: 10px;
+}
+.coverTag {
+  align-self: flex-start;
+  margin: 13px 0 0;
+  padding: 7px 11px;
+  border-radius: 10px;
+  background: #f3ece0;
+  color: #6a5f49;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* 色板（与课程色对应） */
+.yellow { background: var(--yellow); }
+.lemon { background: var(--lemon); }
+.blue { background: var(--blue); }
+.coral { background: var(--coral); }
+.mint { background: var(--mint); }
+.pink { background: var(--pink); }
+
+/* ---- 课程主页头部 ---- */
+.courseHeader {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 26px;
+}
+.courseBigAvatar {
+  flex: 0 0 auto;
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  border-radius: 26px 26px 10px 26px;
+  font-size: 32px;
+  font-weight: 850;
+  color: var(--ink);
+  transform: rotate(-4deg);
+}
+.courseHeader h1 {
+  margin: 0 0 6px;
+  font-size: 28px;
+  letter-spacing: -1px;
+}
+.courseHeader p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.7;
+  max-width: 520px;
+}
+
+/* ---- 详情页 ---- */
+.detail {
+  max-width: 720px;
+  margin: auto;
+}
+.detailTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+.detailCourse {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--ink);
+}
+.detailCourse b {
+  font-size: 14px;
+}
+.detailCourse small {
+  display: block;
+  color: #97a0ad;
+  font-size: 11px;
+  font-weight: 600;
+}
+.detailAuthor {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #97a0ad;
+  font-size: 11px;
+}
+.imageGroup {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-bottom: 22px;
+  padding-bottom: 4px;
+}
+.imageGroup span {
+  flex: 0 0 auto;
+  width: 240px;
+  height: 300px;
+  border-radius: 16px;
+}
+.detail h1 {
+  margin: 0 0 16px;
+  font-size: 25px;
+  letter-spacing: -0.8px;
+  line-height: 1.35;
+}
+.body {
+  color: #38445a;
+  font-size: 15px;
+  line-height: 1.95;
+}
+.body p {
+  margin: 0 0 16px;
+}
+.body strong {
+  color: var(--ink);
+}
+.body ul {
+  margin: 0 0 16px;
+  padding-left: 1.3em;
+}
+.body li {
+  margin: 4px 0;
+}
+
+/* ---- 评论 ---- */
+.comments {
+  margin-top: 34px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+.comments h2 {
+  margin: 0 0 18px;
+  font-size: 15px;
+  letter-spacing: -0.3px;
+}
+.comment {
+  display: flex;
+  gap: 11px;
+  margin-bottom: 18px;
+}
+.comment .cbody b {
+  font-size: 12px;
+}
+.comment .cbody time {
+  margin-left: 7px;
+  color: #a4adba;
+  font-size: 10px;
+}
+.comment .cbody p {
+  margin: 4px 0 0;
+  color: #4a5468;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.compose {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 14px;
+  border: 1px dashed #ccd3d9;
+  border-radius: 14px;
+  background: #faf9f4;
+  align-items: center;
+}
+.compose input {
+  flex: 1;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.compose input:disabled {
+  cursor: not-allowed;
+}
+.compose button {
+  border: 0;
+  padding: 9px 14px;
+  border-radius: 9px;
+  background: #e7e5dd;
+  color: #8c96a2;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: not-allowed;
+}
+
+/* ---- 状态 ---- */
+.state {
+  padding: 70px 20px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .view { padding: 22px 17px 70px; }
+  .feed { grid-template-columns: 1fr; }
+  .imageGroup span { width: 200px; height: 250px; }
+}

@@ -64,3 +64,34 @@ export type PulseItem = {
 
 export type ScoreSummary = { score: number; max: number; note: string };
 export type ReadingSummary = { thisWeek: string; bookTitle: string; bookAuthor: string; progress: number };
+
+/** 课程列表里的一门课（含「有新动态」派生标记，spec §2.2.1：48h 内有新已发布帖即亮）。 */
+export type CourseListItem = Course & { hasUpdate: boolean; newCount: number };
+
+/** 课程主页瀑布流里的一条帖子卡片。 */
+export type PostListItem = {
+  id: string;
+  title: string;
+  excerpt?: string;
+  publishedAtLabel: string;
+  commentCount: number;
+  kind: "text" | "photo";
+};
+
+/** 动态详情页（小红书笔记式）。images：mock 阶段为占位色，真实为 Storage 签名 URL。 */
+export type PostDetail = {
+  id: string;
+  course: Course;
+  author: UserLite;
+  title: string;
+  bodyMarkdown: string;
+  images: string[];
+  publishedAtLabel: string;
+};
+
+export type CommentItem = {
+  id: string;
+  author: UserLite;
+  body: string;
+  timeLabel: string;
+};

@@ -11,7 +11,12 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/community", label: "大家在干嘛", icon: "◎" },
 ];
 
-/** 给定 pathname，判断某个入口是否处于激活态。 */
+/** 给定 pathname，判断某个入口是否处于激活态。
+ *  课程的子页用查询参数路由（/course、/post），也归到「课程」入口高亮。 */
 export function isActive(href: string, pathname: string): boolean {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  if (href === "/") return pathname === "/";
+  if (href === "/courses") {
+    return pathname === "/courses" || pathname === "/course" || pathname === "/post";
+  }
+  return pathname.startsWith(href);
 }
