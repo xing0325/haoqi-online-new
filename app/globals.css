@@ -1,21 +1,70 @@
-/* Phase 0：最小重置。完整纸感设计 token 在 Phase 1 从 legacy-prototype/styles.css 移植。 */
+/* 全局设计 token + 基础排版 + 共享头像。从 legacy-prototype/styles.css 忠实移植。
+   组件级样式放各自的 *.module.css，不要无限膨胀这里。 */
 :root {
-  --paper: #fbf7ef;
-  --ink: #17243d;
+  --ink: #18243b;
+  --ink-soft: #5d6a7e;
+  --paper: #f6f5f0;
+  --white: #fffefa;
+  --line: #e8e6de;
+  --yellow: #ffe55b;
+  --lemon: #fff4a9;
+  --blue: #c9defd;
+  --coral: #ffc6b5;
+  --mint: #c7f0d6;
+  --navy: #192943;
+  --pink: #ffa9b7;
+  --radius: 20px;
+  font-synthesis: none;
 }
 
 * {
   box-sizing: border-box;
 }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
+html {
+  scroll-behavior: smooth;
 }
 
 body {
+  margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  font-family: "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+a {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+  cursor: pointer;
+}
+
+/* 头像在多处复用，保持全局 */
+.avatar {
+  flex: 0 0 auto;
+  width: 29px;
+  height: 29px;
+  display: inline-grid;
+  place-items: center;
+  border: 2px solid var(--white);
+  border-radius: 50%;
+  font-size: 10px;
+  color: var(--ink);
+  font-weight: 800;
+}
+.avatar-pink {
+  background: var(--pink);
+}
+.avatar-yellow {
+  background: var(--yellow);
+}
+.avatar-blue {
+  background: var(--blue);
+}
+.avatar-mint {
+  background: var(--mint);
 }

@@ -9,3 +9,6 @@ build/
 .DS_Store
 .vercel
 spec-preview.html
+.claude/
+.shots/
+.pw-install.log

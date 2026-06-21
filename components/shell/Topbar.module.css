@@ -1,0 +1,97 @@
+.topbar {
+  height: 84px;
+  max-width: 1420px;
+  padding: 0 clamp(25px, 4.2vw, 70px);
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.menu {
+  display: none;
+}
+
+.crumb {
+  color: #8993a2;
+  font-size: 12px;
+  font-weight: 600;
+}
+.crumb span {
+  color: var(--ink);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.iconButton {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 50%;
+  font-size: 21px;
+  color: inherit;
+}
+.iconButton:disabled {
+  color: #b8bfc9;
+  cursor: not-allowed;
+}
+.iconButton:not(:disabled):hover {
+  background: #eceae2;
+}
+
+.newButton {
+  border: 0;
+  padding: 11px 16px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: white;
+  font-size: 12px;
+  font-weight: 750;
+  box-shadow: 0 3px 0 rgba(20, 31, 50, 0.13);
+}
+.newButton span {
+  margin-right: 4px;
+  color: var(--yellow);
+  font-size: 16px;
+}
+.newButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    height: 66px;
+    padding: 0 17px;
+  }
+  .crumb {
+    display: none;
+  }
+  .actions {
+    margin-left: auto;
+  }
+  .iconButton {
+    display: none;
+  }
+  .menu {
+    display: block;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: #e9e8e1;
+    font-size: 17px;
+    color: inherit;
+  }
+  .newButton {
+    padding: 9px 11px;
+  }
+}

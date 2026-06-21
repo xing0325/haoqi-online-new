@@ -1,0 +1,168 @@
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 30px 18px 20px;
+  background: var(--navy);
+  color: #f7f5ee;
+  display: flex;
+  flex-direction: column;
+  z-index: 5;
+}
+
+.brand {
+  padding: 0 10px;
+  color: inherit;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: -1px;
+  line-height: 0.8;
+}
+.brandMark {
+  display: grid;
+  width: 35px;
+  height: 35px;
+  place-items: center;
+  border-radius: 12px 12px 3px 12px;
+  background: var(--yellow);
+  color: var(--navy);
+  font-size: 21px;
+  transform: rotate(-5deg);
+}
+.brand em {
+  color: #a7b7cf;
+  font-size: 8px;
+  letter-spacing: 2.8px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.nav {
+  margin-top: 48px;
+  display: grid;
+  gap: 5px;
+}
+.item {
+  min-height: 48px;
+  padding: 0 13px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #c1cada;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 14px;
+  transition: 0.2s ease;
+}
+.item span {
+  width: 18px;
+  color: #a6b3c6;
+  font-size: 21px;
+  line-height: 1;
+  text-align: center;
+}
+.item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+.item.active {
+  color: white;
+  background: rgba(255, 255, 255, 0.13);
+}
+.item.active span {
+  color: var(--yellow);
+}
+
+.bottom {
+  margin-top: auto;
+}
+.clubCard {
+  margin: 0 3px 15px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+.clubSpark {
+  position: absolute;
+  right: 11px;
+  top: 8px;
+  font-size: 24px;
+  color: var(--yellow);
+  transform: rotate(18deg);
+}
+.clubCard p {
+  margin: 0 0 10px;
+  color: #cbd3e0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.clubCard strong {
+  color: white;
+}
+.meter {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+}
+.meter i {
+  display: block;
+  width: 76%;
+  height: 100%;
+  background: var(--yellow);
+  border-radius: inherit;
+}
+.profile {
+  width: 100%;
+  border: 0;
+  padding: 9px 8px;
+  background: none;
+  color: white;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  text-align: left;
+  font-weight: 700;
+  font-size: 12px;
+}
+.profile small {
+  display: block;
+  margin-top: 3px;
+  color: #9dabc0;
+  font-weight: 500;
+}
+.profile b {
+  margin-left: auto;
+  color: #aab5c7;
+  font-size: 15px;
+}
+
+@media (max-width: 1050px) {
+  .sidebar {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+@media (max-width: 720px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 240px;
+    transform: translateX(-100%);
+    transition: 0.25s ease;
+  }
+  .sidebar.open {
+    transform: none;
+    box-shadow: 15px 0 35px rgba(18, 30, 48, 0.2);
+  }
+}
