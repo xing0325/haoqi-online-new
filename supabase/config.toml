@@ -1,0 +1,13 @@
+# Supabase 项目本地配置。套用到云项目：
+#   npx supabase link --project-ref <你的 project ref>
+#   npx supabase db push        # 套用 migrations/ 下的迁移
+# 本机无 Docker，不跑 `supabase start`（本地 stack）；直接对云项目操作。
+project_id = "haoqi-online"
+
+[db]
+# 仅 db push 用得到；本地 shadow/diff 需要 Docker，这里只声明端口占位。
+port = 54322
+
+[api]
+schemas = ["public", "storage"]
+extra_search_path = ["public"]
