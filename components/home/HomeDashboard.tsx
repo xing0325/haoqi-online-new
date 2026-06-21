@@ -133,21 +133,23 @@ export default function HomeDashboard() {
                   <h2>大家正在</h2>
                 </div>
               </div>
-              <div className={s.pulseList}>
-                {data.pulse.map((p) => (
-                  <div key={p.id} className={s.pulseItem}>
-                    <span className={`avatar avatar-${p.user.avatarColor}`}>
-                      {p.user.initial}
-                    </span>
-                    <p>
-                      <b>{p.user.displayName}</b> {p.verb}
-                      <br />
-                      <strong>{p.what}</strong>
-                    </p>
-                    <time>{p.timeLabel}</time>
-                  </div>
-                ))}
-              </div>
+              {data.pulse.length > 0 ? (
+                <div className={s.pulseList}>
+                  {data.pulse.map((p) => (
+                    <div key={p.id} className={s.pulseItem}>
+                      <span className={`avatar avatar-${p.user.avatarColor}`}>{p.user.initial}</span>
+                      <p>
+                        <b>{p.user.displayName}</b> {p.verb}
+                        <br />
+                        <strong>{p.what}</strong>
+                      </p>
+                      <time>{p.timeLabel}</time>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className={s.placeholder}>「大家在干嘛」还在路上——做好了这里会显示同学们正在干什么。</p>
+              )}
               <button className={s.statusButton} type="button" disabled title="更新状态 · 建设中">
                 <span aria-hidden="true">✦</span> 更新「我在干嘛」
               </button>
@@ -199,7 +201,7 @@ export default function HomeDashboard() {
                   <span>你的信用积分</span>
                 </div>
                 <div className={s.scoreNumber}>
-                  {data.score.score}
+                  {data.score.score > 0 ? data.score.score : "—"}
                   <small> / {data.score.max}</small>
                 </div>
                 <div className={s.scoreLine}>
@@ -215,14 +217,27 @@ export default function HomeDashboard() {
                 </span>
                 <div>
                   <p className={s.overline}>READING LEAGUE</p>
-                  <h3>
-                    你本周读了
-                    <br />
-                    <b>{data.reading.thisWeek}</b>
-                  </h3>
-                  <p>
-                    《{data.reading.bookTitle}》· {data.reading.progress}%
-                  </p>
+                  {data.reading.progress > 0 ? (
+                    <>
+                      <h3>
+                        你本周读了
+                        <br />
+                        <b>{data.reading.thisWeek}</b>
+                      </h3>
+                      <p>
+                        《{data.reading.bookTitle}》· {data.reading.progress}%
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h3>
+                        阅读联赛
+                        <br />
+                        <b>建设中</b>
+                      </h3>
+                      <p>{data.reading.bookTitle}</p>
+                    </>
+                  )}
                 </div>
               </article>
             </section>

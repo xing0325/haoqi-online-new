@@ -2,12 +2,18 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
+import LoginScreen from "@/components/auth/LoginScreen";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import styles from "./AppShell.module.css";
 
-export default function AppShell({ children }: { children: ReactNode }) {
+function Shell({ children }: { children: ReactNode }) {
+  const { session, loading } = useAuth();
   const [navOpen, setNavOpen] = useState(false);
+
+  if (loading) return <div className={styles.boot}>正在进入好奇…</div>;
+  if (!session) return <LoginScreen />;
 
   return (
     <div className={styles.shell}>
@@ -22,5 +28,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
         aria-hidden="true"
       />
     </div>
+  );
+}
+
+export default function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <AuthProvider>
+      <Shell>{children}</Shell>
+    </AuthProvider>
   );
 }

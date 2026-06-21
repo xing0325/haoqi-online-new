@@ -520,6 +520,14 @@
   padding-left: 3px;
 }
 
+.placeholder {
+  margin: 8px 0 14px;
+  padding: 16px 4px;
+  color: #97a0ad;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
 /* ---- 加载 / 空 / 错误态 ---- */
 .state {
   padding: 60px 20px;

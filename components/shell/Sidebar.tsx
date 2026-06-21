@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS, isActive } from "@/lib/nav";
+import { useAuth } from "@/components/auth/AuthProvider";
+import type { Role } from "@/lib/types";
 import styles from "./Sidebar.module.css";
+
+const ROLE_LABEL: Record<Role, string> = {
+  student: "学生",
+  teacher: "老师",
+  admin: "管理员",
+};
 
 export default function Sidebar({
   open,
@@ -13,6 +21,8 @@ export default function Sidebar({
   onNavigate: () => void;
 }) {
   const pathname = usePathname();
+  const { profile, signOut } = useAuth();
+  const name = profile?.display_name ?? "…";
 
   return (
     <aside className={`${styles.sidebar} ${open ? styles.open : ""}`} aria-label="主导航">
@@ -57,12 +67,13 @@ export default function Sidebar({
             <i />
           </div>
         </div>
-        <button className={styles.profile} type="button">
-          <span className="avatar avatar-pink">D</span>
+        <button className={styles.profile} type="button" onClick={() => signOut()} title="退出登录">
+          <span className="avatar avatar-pink">{name.charAt(0)}</span>
           <span>
-            David<small>学生 · 三年级</small>
+            {name}
+            <small>{profile ? `${ROLE_LABEL[profile.role]} · 退出` : "加载中"}</small>
           </span>
-          <b aria-hidden="true">⌄</b>
+          <b aria-hidden="true">⎋</b>
         </button>
       </div>
     </aside>
