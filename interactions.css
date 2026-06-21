@@ -1,0 +1,12 @@
+.vote-option.selected-vote {
+  border-color: #e7c13e;
+  background: #fffbed;
+  color: var(--ink);
+  box-shadow: 0 2px 0 rgba(229, 193, 62, .15);
+}
+
+.vote-option.selected-vote i {
+  border-color: #e5c22b;
+  background: var(--yellow);
+  box-shadow: inset 0 0 0 2px #fff;
+}
