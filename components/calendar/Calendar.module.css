@@ -316,6 +316,57 @@
   background: #f2f8ff;
 }
 
+/* 一句话建日程 */
+.nlBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 5px 6px 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--paper);
+}
+.nlBar:focus-within {
+  border-color: #c9defd;
+  box-shadow: 0 0 0 3px rgba(201, 222, 253, 0.4);
+}
+.nlSpark {
+  font-size: 14px;
+  opacity: 0.8;
+}
+.nlInput {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  font-size: 14px;
+  color: var(--ink);
+  font-family: inherit;
+  padding: 8px 0;
+}
+.nlInput:focus {
+  outline: none;
+}
+.nlInput::placeholder {
+  color: #aab3c0;
+}
+.nlBtn {
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 9px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 750;
+  padding: 8px 18px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.nlBtn:hover {
+  background: #0f1a2e;
+}
+
 /* 悬停快速预览卡 */
 .hoverCard {
   position: fixed;

@@ -29,6 +29,7 @@ import {
 } from "@/lib/data";
 import { buildRRule, describeRRule, parseRRule } from "@/lib/recurrence";
 import { detectMeetingLink } from "@/lib/meeting";
+import { parseNL } from "@/lib/nlschedule";
 import type { CalInstance, Calendar as Cal, EditScope, EventStatus, Recurrence, RecurFreq, ScheduleRecurring } from "@/lib/types";
 import s from "./Calendar.module.css";
 import "./calendar-theme.css";
@@ -172,6 +173,7 @@ export default function CalendarBoard() {
     location: string | null;
     meeting: string | null;
   } | null>(null);
+  const [nlText, setNlText] = useState("");
 
   const layersRef = useRef(layers);
   layersRef.current = layers;
@@ -405,6 +407,32 @@ export default function CalendarBoard() {
       status: "confirmed",
       ...EMPTY_RECUR,
     });
+  }
+
+  function nlCreate() {
+    if (!nlText.trim()) return;
+    const r = parseNL(nlText, new Date());
+    if (!r) {
+      showToast("没读懂这句～换种说法，或点空白手动建。例：明天下午3点开会", null);
+      return;
+    }
+    const rec = r.recurrence;
+    setForm({
+      mode: "create",
+      title: r.title,
+      start: toLocalInput(r.start),
+      end: toLocalInput(r.end),
+      kind: "event",
+      calendarId: defaultCalId(),
+      location: "",
+      status: "confirmed",
+      recurFreq: rec ? rec.freq : "none",
+      recurWeekdays: rec?.byWeekday ?? [],
+      recurEndMode: rec?.endMode ?? "never",
+      recurUntil: rec?.until ?? "",
+      recurCount: rec?.count ?? 10,
+    });
+    setNlText("");
   }
 
   function openEdit(ev: { id: string; title: string; start: Date | null; end: Date | null; extendedProps: Record<string, unknown> }) {
@@ -755,6 +783,25 @@ export default function CalendarBoard() {
       </div>
 
       <p className={s.hint}>课表只读（拖不动）。点空白新建，双击改，拖动改时间、拉伸改时长（15 分钟吸附）。重复日程带 ↻。</p>
+
+      <div className={s.nlBar}>
+        <span className={s.nlSpark} aria-hidden="true">
+          ✨
+        </span>
+        <input
+          className={s.nlInput}
+          value={nlText}
+          onChange={(e) => setNlText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") nlCreate();
+          }}
+          placeholder="用一句话建日程：明天下午3点开会 / 每周三晚7点排练 / 6月30号下午2点答辩"
+          aria-label="用一句话建日程"
+        />
+        <button type="button" className={s.nlBtn} onClick={nlCreate}>
+          建
+        </button>
+      </div>
 
       <div ref={elRef} className={s.cal} />
 
