@@ -1,5 +1,5 @@
 .view {
-  max-width: 1280px;
+  max-width: 1080px;
   margin: auto;
   padding: 28px clamp(25px, 4.2vw, 70px) 80px;
 }
@@ -28,93 +28,167 @@
 }
 .note {
   margin: 12px 0 0;
-  max-width: 620px;
+  max-width: 640px;
   color: var(--ink-soft);
   font-size: 13px;
   line-height: 1.8;
 }
 
-.week {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(150px, 1fr));
-  gap: 12px;
-}
-.day {
-  min-height: 280px;
-  padding: 14px 12px;
+/* ---- 日历容器 ---- */
+.cal {
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 14px;
+  overflow: hidden;
   background: var(--white);
 }
-.day.today {
-  border-color: #f3b8ad;
-  box-shadow: 0 0 0 2px rgba(238, 114, 92, 0.18);
+
+.calHead {
+  display: grid;
+  grid-template-columns: 56px repeat(5, 1fr);
+  border-bottom: 1px solid var(--line);
+  background: var(--white);
+}
+.corner {
+  border-right: 1px solid var(--line);
 }
 .dayHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
+  padding: 9px 8px 8px;
+  text-align: center;
 }
-.dayHead b {
-  font-size: 14px;
+.dayHead:not(:last-child) {
+  border-right: 1px solid var(--line);
 }
-.todayTag {
-  padding: 2px 7px;
+.todayHead {
+  background: #fdf3ef;
+}
+.dn {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--navy);
+}
+.dd {
+  display: inline-block;
+  margin-top: 5px;
+  font-size: 11px;
+  color: #97a0ad;
+  line-height: 1;
+}
+.ddToday {
+  padding: 3px 8px;
   border-radius: 999px;
-  background: #fff0ec;
-  color: #ee725c;
-  font-size: 9px;
+  background: #ee725c;
+  color: white;
   font-weight: 800;
 }
 
-.slot {
-  display: block;
-  margin-bottom: 10px;
-  padding: 11px 12px;
-  border-radius: 12px;
+/* ---- 时间轴 + 列 ---- */
+.calBody {
+  display: flex;
+}
+.gutter {
+  position: relative;
+  flex: 0 0 56px;
+  border-right: 1px solid var(--line);
+}
+.hourLabel {
+  position: absolute;
+  right: 7px;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: #a4adba;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.days {
+  position: relative;
+  flex: 1;
+}
+.hourLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid #f1efe9;
+}
+.daysGrid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+.dayCol {
+  position: relative;
+}
+.dayCol:not(:last-child) {
+  border-right: 1px solid var(--line);
+}
+.todayCol {
+  background: rgba(253, 243, 239, 0.55);
+}
+
+/* ---- 课程块 ---- */
+.event {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  border-left: 3px solid;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   text-decoration: none;
   color: var(--ink);
-  transition: transform 0.12s ease;
+  box-shadow: 0 1px 2px rgba(47, 58, 73, 0.07);
 }
-a.slot:hover {
-  transform: translateY(-2px);
+a.event:hover {
+  filter: brightness(0.97);
 }
-.slot time {
-  display: block;
-  margin-bottom: 4px;
+.evtTime {
+  font-size: 9.5px;
+  color: #5f6d81;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 10px;
-  font-weight: 800;
-  color: #617087;
 }
-.slot h4 {
-  margin: 0;
-  font-size: 13px;
-  letter-spacing: -0.3px;
+.evtTitle {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.2px;
 }
-.slotChange {
-  display: inline-block;
-  margin-top: 6px;
-  padding: 2px 6px;
-  border-radius: 5px;
-  background: #fff0ec;
-  color: #d66751;
+.evtChange {
+  margin-top: 1px;
   font-size: 9px;
   font-weight: 800;
+  color: #d66751;
 }
-.empty {
-  margin: 6px 2px;
-  color: #b8bfc9;
-  font-size: 12px;
+.changed {
+  border-left-color: #ee725c !important;
 }
 
-.cYellow { background: #fff6c9; }
-.cCoral { background: #ffe6df; }
-.cBlue { background: #e4f0fe; }
-.cMint { background: #dcf3e6; }
-.cPink { background: #ffe1e7; }
-.cNone { background: #f3f1ea; }
+.evtYellow { background: #fff6c9; border-left-color: #e6c000; }
+.evtCoral { background: #ffe6df; border-left-color: #ef785e; }
+.evtBlue { background: #e4f0fe; border-left-color: #5b9be0; }
+.evtMint { background: #dcf3e6; border-left-color: #4cb88a; }
+.evtPink { background: #ffe1e7; border-left-color: #ef8aa0; }
+.evtNone { background: #eef0f3; border-left-color: #aeb6c2; }
+
+/* ---- 此刻红线 ---- */
+.nowLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #ee725c;
+  z-index: 3;
+}
+.nowDot {
+  position: absolute;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ee725c;
+}
 
 .state {
   padding: 60px 20px;
@@ -123,15 +197,12 @@ a.slot:hover {
   font-size: 13px;
 }
 
-@media (max-width: 860px) {
-  .week {
-    grid-auto-flow: column;
-    grid-auto-columns: 70%;
-    grid-template-columns: none;
+@media (max-width: 720px) {
+  .cal {
     overflow-x: auto;
-    scroll-snap-type: x mandatory;
   }
-  .day {
-    scroll-snap-align: start;
+  .calBody,
+  .calHead {
+    min-width: 620px;
   }
 }
