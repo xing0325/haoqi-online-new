@@ -20,7 +20,11 @@
   - **活动详情页 `/event?id=`**（`app/event/page.tsx` + `components/calendar/EventDetail.tsx`；重复传 `&occ=`）：时间/重复描述/地点/日历/进入会议 + 附件·关联做事课「建设中」诚实占位；编辑表单加「详情 ↗」。
 - **1.7 状态**：编辑/新建表单加**状态选择**（草稿/已确认/已完成，补齐之前只能在 list 勾 done 的缺口）；**进行中呼吸动效** `.fc-live`（now∈[start,end] 且已确认，纯客户端无迁移）。
 - 三切片共 **28 vitest 绿**；浏览器逐项实测（五视图/重复展开/热力/详情页/会议按钮/悬停/编辑表单）。`scripts/seed-recur-demo.mjs` 给 chichu 留了「每周·团队站会」demo（含腾讯会议链接，可删）。
-- **下一步建议**（见第 7 节）：重复+视图+富事件 lite 已完成。**没动**的大块：①任务流（停车场/deadline/滚明天/shutdown，拖拽重，需新 Task 实体）②协作（公开分享/发帖/指派/Openings/Proposals）③完整生命周期状态流（想法→报名中→已复盘，需配报名系统）④Agent 子系统（**架构未决**：静态站跑 DeepSeek 要加后端代理，破"纯静态"锁，**留负责人拍板**）⑤社区脉搏跨用户聚合。能力 API（`lib/data.ts`）已给 Agent 留好。
+### 同夜再追加：切片 1.8（一句话建日程）+ 1.9（任务停车场）+ 一轮对抗审查修复
+- **1.8 一句话建日程**（spec `docs/specs/2026-06-23-calendar-rich-events-lite-design.md` 旁的 NL）：`lib/nlschedule.ts` 中文 NL→日程纯解析（相对/绝对日期、上午下午晚上午夜、X点[到Y点]、时长、每天/每周X、剥离提醒词；25 单测）。日历页"一句话建日程"对话框 → 解析 → **预填创建表单**(用户确认再存)，复用能力 API。**这是 Agent 愿景的静态可落地版**；完整 DeepSeek 对话 agent 仍待后端（架构未决，见下）。
+- **1.9 任务停车场**（spec `docs/specs/2026-06-23-calendar-tasks-design.md`）：新 `Task` 表（个人待办，**与做事空间 ProjectTask 分开**，迁移 `20260623140000`，仅本人 RLS）。`lib/data.ts` 加 `getTasks/createTask/updateTask/scheduleTask/softDeleteTask`。`components/calendar/TasksPanel.tsx` 停车场：快速建、勾完成、删、Deadline Risk 48h 标红；点「安排」→ 预填时间块表单 → 存事件回写 `Task.scheduled_event_id` → 移出停车场（task↔event 联动）。真库 `scripts/tasks-smoke.mjs` 7/7。
+- **对抗审查修复（第一轮，13 真 bug 已修）**：NL 午夜/跨时段范围/时长叠加/凌晨/零时长；recurrence **全程按北京 +08:00 帧**展开/描述（修非 CN 时区与早晨事件 BYMONTHDAY/describe 错位）；updateSeries 改时间/规律时**清失配旧 override**(高危)；override upsert 复活软删行防撞唯一键；recur_until 计末次结束防跨午夜漏取；splitSeries 软删含被移动子行；NL/表单 allDay 透传 + 全天勾选；此次及以后透传 status。回归单测共 **56 全绿**。（第二轮审查脚本 `…/workflows/scripts/calendar-harden-review-2-*.js`。）
+- **下一步建议**（见第 7 节）：重复/视图/富事件/状态/NL/任务 已完成。**没动**的大块：①协作（公开分享/发帖/指派+提醒/Openings/Proposals — 需定形态与提醒通道）②完整生命周期（想法→报名中→已复盘 — 需配报名系统）③空间/场地视图（FC resource-timeline 是付费插件，需自绘 + 房间模型）④社区脉搏跨用户聚合（隐私）⑤任务流扩展（未完成滚明天/Shutdown 总结）⑥**Agent 完整子系统**（**架构未决**：静态站跑 DeepSeek 需后端代理，破"纯静态"锁，**留负责人拍板**；NL 框已顶上轻量解析）。能力 API（`lib/data.ts`）已给 Agent 留好。
 
 ---
 
