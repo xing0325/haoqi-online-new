@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import s from "./Courses.module.css";
 import { getComments, getPost } from "@/lib/data";
+import { supabase } from "@/lib/supabase/browser";
+import { useAuth } from "@/components/auth/AuthProvider";
 import type { CommentItem, PostDetail as PostDetailT } from "@/lib/types";
 
 const IMAGE_COLORS = ["#f5cc81", "#a9d1c7", "#bdcde4", "#e9b8c4", "#cbd9a6"];
@@ -64,6 +66,30 @@ export default function PostDetail() {
       active = false;
     };
   }, [id]);
+
+  const { session } = useAuth();
+  const [text, setText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [cErr, setCErr] = useState("");
+
+  async function submitComment(e: FormEvent) {
+    e.preventDefault();
+    const body = text.trim();
+    if (!body || !session) return;
+    setSubmitting(true);
+    setCErr("");
+    const { error } = await supabase()
+      .from("Comment")
+      .insert({ post_id: id, author_id: session.user.id, body });
+    if (error) {
+      setSubmitting(false);
+      setCErr(error.code === "42501" ? "没有评论权限，或登录已过期，刷新重试。" : "发送失败，再试一次。");
+      return;
+    }
+    setText("");
+    setComments(await getComments(id));
+    setSubmitting(false);
+  }
 
   return (
     <section className={s.view}>
@@ -126,12 +152,20 @@ export default function PostDetail() {
                 <p style={{ color: "var(--ink-soft)", fontSize: 13 }}>还没有评论，等你来开个头。</p>
               )}
 
-              <div className={s.compose}>
-                <input disabled placeholder="登录后可评论 · 评论功能待接后端" aria-label="评论输入（建设中）" />
-                <button type="button" disabled title="评论 · 待接后端">
-                  发布
+              <form className={s.compose} onSubmit={submitComment}>
+                <input
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder="写句评论…"
+                  aria-label="评论输入"
+                  maxLength={500}
+                  disabled={submitting}
+                />
+                <button type="submit" disabled={submitting || !text.trim()}>
+                  {submitting ? "发送中…" : "发布"}
                 </button>
-              </div>
+              </form>
+              {cErr && <p className={s.cErr}>{cErr}</p>}
             </div>
           </>
         )}
