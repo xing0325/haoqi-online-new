@@ -23,8 +23,12 @@ function rruleUntilToDate(u: string): string {
   return m ? `${m[1]}-${m[2]}-${m[3]}` : u;
 }
 
+// 北京固定 +08:00（中国无夏令时）：把真实瞬时 +8h 当伪 UTC，按北京"墙上时间"展开/取分量。
+const BJ = 8 * 3600 * 1000;
+const toBJ = (iso: string) => new Date(new Date(iso).getTime() + BJ);
+
 function makeRule(rruleStr: string, dtstartISO: string): RRule {
-  return rrulestr(`DTSTART:${toRRuleUTC(dtstartISO)}\nRRULE:${rruleStr}`) as RRule;
+  return rrulestr(`DTSTART:${toRRuleUTC(toBJ(dtstartISO).toISOString())}\nRRULE:${rruleStr}`) as RRule;
 }
 
 /** 给 RRULE 串设置 UNTIL（去掉 COUNT/旧 UNTIL）；系列拆分时给旧母封口。 */
@@ -41,7 +45,7 @@ export function buildRRule(rec: Recurrence, dtstartISO: string): string {
   if (rec.freq === "weekly" && rec.byWeekday.length) {
     parts.push(`BYDAY=${rec.byWeekday.map((n) => BYDAY[n]).join(",")}`);
   }
-  if (rec.freq === "monthly") parts.push(`BYMONTHDAY=${new Date(dtstartISO).getUTCDate()}`);
+  if (rec.freq === "monthly") parts.push(`BYMONTHDAY=${toBJ(dtstartISO).getUTCDate()}`);
   if (rec.endMode === "count" && rec.count) parts.push(`COUNT=${rec.count}`);
   if (rec.endMode === "until" && rec.until) parts.push(`UNTIL=${untilToRRule(rec.until)}`);
   return parts.join(";");
@@ -73,16 +77,17 @@ export function parseRRule(rruleStr: string, _dtstartISO: string): Recurrence {
 }
 
 /** 末次出现起始（剪枝用）：never→null；until→UNTIL 时刻；count→第 N 次起始。 */
-export function computeRecurUntil(rec: Recurrence, dtstartISO: string): string | null {
+// durationMs：单次时长。recur_until 存"末次结束时刻"以便范围查询不漏跨界（午夜）实例。
+export function computeRecurUntil(rec: Recurrence, dtstartISO: string, durationMs = 0): string | null {
   if (rec.endMode === "never") return null;
   if (rec.endMode === "until" && rec.until) {
     const iso = rec.until.length <= 10 ? `${rec.until}T23:59:59.000Z` : rec.until;
-    return new Date(iso).toISOString();
+    return new Date(new Date(iso).getTime() + durationMs).toISOString();
   }
   if (rec.endMode === "count" && rec.count) {
     const all = makeRule(buildRRule(rec, dtstartISO), dtstartISO).all();
     const last = all[all.length - 1];
-    return last ? last.toISOString() : null;
+    return last ? new Date(last.getTime() - BJ + durationMs).toISOString() : null;
   }
   return null;
 }
@@ -184,7 +189,8 @@ export function expandWindow(rows: CalEvent[], fromISO: string, toISO: string): 
     const rule = makeRule(m.rrule!, m.startsAt);
     const durationMs = new Date(m.endsAt).getTime() - new Date(m.startsAt).getTime();
     const cidx = childIndex.get(m.id);
-    for (const occ of rule.between(from, to, true)) {
+    for (const pseudoOcc of rule.between(new Date(from.getTime() + BJ), new Date(to.getTime() + BJ), true)) {
+      const occ = new Date(pseudoOcc.getTime() - BJ); // 伪 UTC → 真实瞬时
       const occISO = occ.toISOString();
       consumed.add(`${m.id}::${occISO}`);
       const child = cidx?.get(occISO);
@@ -216,8 +222,8 @@ export function expandWindow(rows: CalEvent[], fromISO: string, toISO: string): 
 /** RRULE → 中文描述，如「每周一、三 19:00，到 2026-12-31」。 */
 export function describeRRule(rruleStr: string, dtstartISO: string): string {
   const rec = parseRRule(rruleStr, dtstartISO);
-  const d = new Date(dtstartISO);
-  const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const d = toBJ(dtstartISO);
+  const time = `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
 
   let base = "";
   if (rec.freq === "daily") base = rec.interval > 1 ? `每 ${rec.interval} 天` : "每天";
@@ -226,8 +232,8 @@ export function describeRRule(rruleStr: string, dtstartISO: string): string {
       const days = "周" + rec.byWeekday.slice().sort((a, b) => a - b).map((n) => WD_CN[n]).join("、");
       base = rec.interval > 1 ? `每 ${rec.interval} 周 ${days}` : `每${days}`;
     } else base = rec.interval > 1 ? `每 ${rec.interval} 周` : "每周";
-  } else if (rec.freq === "monthly") base = `每月 ${d.getDate()} 号`;
-  else if (rec.freq === "yearly") base = `每年 ${d.getMonth() + 1} 月 ${d.getDate()} 日`;
+  } else if (rec.freq === "monthly") base = `每月 ${d.getUTCDate()} 号`;
+  else if (rec.freq === "yearly") base = `每年 ${d.getUTCMonth() + 1} 月 ${d.getUTCDate()} 日`;
 
   let end = "";
   if (rec.endMode === "until" && rec.until) end = `，到 ${rec.until}`;

@@ -316,6 +316,20 @@
   background: #f2f8ff;
 }
 
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #5f6d81;
+  cursor: pointer;
+}
+.checkRow input {
+  accent-color: #18243b;
+}
+
 /* 一句话建日程 */
 .nlBar {
   display: flex;

@@ -96,6 +96,41 @@ describe("parseNL — 重复 + 提醒词剥离", () => {
   });
 });
 
+describe("parseNL — 审查回归（午夜/跨时段/时长/凌晨/零时长）", () => {
+  it("晚上12点 = 次日午夜 00:00（bug#1）", () => {
+    const r = parseNL("晚上12点睡觉", NOW)!;
+    expect(r.start.getTime()).toBe(at(5, 24, 0, 0));
+    expect(r.title).toBe("睡觉");
+  });
+  it("跨时段范围 上午9点到下午2点（bug#2）", () => {
+    const r = parseNL("上午9点到下午2点 长会", NOW)!;
+    expect(r.start.getTime()).toBe(at(5, 23, 9));
+    expect(r.end.getTime()).toBe(at(5, 23, 14));
+    expect(r.title).toBe("长会");
+  });
+  it("跨时段范围 早上10点到晚上8点", () => {
+    const r = parseNL("早上10点到晚上8点 布展", NOW)!;
+    expect(r.start.getTime()).toBe(at(5, 23, 10));
+    expect(r.end.getTime()).toBe(at(5, 23, 20));
+  });
+  it("半小时与分钟互斥，不叠加（bug#3）", () => {
+    expect(parseNL("3点 半小时30分钟", NOW)!.end.getTime() - parseNL("3点 半小时30分钟", NOW)!.start.getTime()).toBe(30 * 60000);
+  });
+  it("1小时30分钟仍为90分钟", () => {
+    const r = parseNL("明天3点 1小时30分钟", NOW)!;
+    expect(r.end.getTime() - r.start.getTime()).toBe(90 * 60000);
+  });
+  it("凌晨被识别且不污染标题（bug#4）", () => {
+    const r = parseNL("凌晨2点赶火车", NOW)!;
+    expect(r.start.getTime()).toBe(at(5, 23, 2));
+    expect(r.title).toBe("赶火车");
+  });
+  it("end==start 不当跨天 24h（bug#5）", () => {
+    const r = parseNL("3点到3点 测试", NOW)!;
+    expect(r.end.getTime() - r.start.getTime()).toBe(60 * 60000);
+  });
+});
+
 describe("parseNL — 无法解析", () => {
   it("没有日期也没有时间 → null", () => {
     expect(parseNL("随便写点什么", NOW)).toBeNull();

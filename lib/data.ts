@@ -479,8 +479,9 @@ export async function createEvent(
   };
   if (input.status) row.status = input.status;
   if (input.recurrence) {
+    const dur = new Date(input.endsAt).getTime() - new Date(input.startsAt).getTime();
     row.rrule = buildRRule(input.recurrence, input.startsAt);
-    row.recur_until = computeRecurUntil(input.recurrence, input.startsAt);
+    row.recur_until = computeRecurUntil(input.recurrence, input.startsAt, dur);
   }
   const { data, error } = await supabase().from("Event").insert(row).select(EVENT_COLS).single();
   if (error) return { error: error.code === "42501" ? "没权限往这个日历写。" : "新建失败，再试一次。" };
@@ -502,6 +503,7 @@ export async function updateEvent(
     title?: string;
     startsAt?: string;
     endsAt?: string;
+    allDay?: boolean;
     kind?: "event" | "timeblock";
     status?: "draft" | "confirmed" | "done" | "cancelled";
     location?: string | null;
@@ -511,6 +513,7 @@ export async function updateEvent(
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.startsAt !== undefined) row.starts_at = patch.startsAt;
   if (patch.endsAt !== undefined) row.ends_at = patch.endsAt;
+  if (patch.allDay !== undefined) row.all_day = patch.allDay;
   if (patch.kind !== undefined) row.kind = patch.kind;
   if (patch.status !== undefined) row.status = patch.status;
   if (patch.location !== undefined) row.location = patch.location;
@@ -525,13 +528,14 @@ export async function softDeleteEvent(id: string): Promise<{ ok: true } | { erro
 
 // ---- 重复系列能力 API（精简 UI 与未来 Agent 共用同一套）----
 
+// 注意：不过滤 deleted_at —— 唯一索引 event_override_uniq 不区分软删，
+// 软删的旧子行仍占着 (series_id, occurrence_start) 键。找到它就"复活"重写，避免 insert 撞唯一键(23505)。
 async function findOverrideId(masterId: string, occurrenceStartISO: string): Promise<string | null> {
   const { data } = await supabase()
     .from("Event")
     .select("id")
     .eq("series_id", masterId)
     .eq("occurrence_start", occurrenceStartISO)
-    .is("deleted_at", null)
     .maybeSingle();
   return (data as { id: string } | null)?.id ?? null;
 }
@@ -543,25 +547,46 @@ export async function updateSeries(
     title?: string;
     startsAt?: string;
     endsAt?: string;
+    allDay?: boolean;
     kind?: EventKind;
     status?: EventStatus;
     location?: string | null;
     recurrence?: Recurrence | null;
   },
 ): Promise<{ ok: true } | { error: string }> {
+  // 取旧值：若整组改了时间/规律，旧的单次覆盖(occurrence_start 锚点)会失配 → 必须一并清掉，否则孤儿+重复渲染。
+  const { data: cur } = await supabase().from("Event").select("starts_at, rrule").eq("id", masterId).maybeSingle();
+  const old = cur as { starts_at: string; rrule: string | null } | null;
+
   const row: Record<string, unknown> = {};
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.startsAt !== undefined) row.starts_at = patch.startsAt;
   if (patch.endsAt !== undefined) row.ends_at = patch.endsAt;
+  if (patch.allDay !== undefined) row.all_day = patch.allDay;
   if (patch.kind !== undefined) row.kind = patch.kind;
   if (patch.status !== undefined) row.status = patch.status;
   if (patch.location !== undefined) row.location = patch.location;
+  let newRrule: string | null | undefined;
   if (patch.recurrence !== undefined && patch.startsAt) {
-    row.rrule = patch.recurrence ? buildRRule(patch.recurrence, patch.startsAt) : null;
-    row.recur_until = patch.recurrence ? computeRecurUntil(patch.recurrence, patch.startsAt) : null;
+    const dur = patch.endsAt ? new Date(patch.endsAt).getTime() - new Date(patch.startsAt).getTime() : 0;
+    newRrule = patch.recurrence ? buildRRule(patch.recurrence, patch.startsAt) : null;
+    row.rrule = newRrule;
+    row.recur_until = patch.recurrence ? computeRecurUntil(patch.recurrence, patch.startsAt, dur) : null;
   }
+
   const { error } = await supabase().from("Event").update(row).eq("id", masterId);
-  return error ? { error: "保存失败" } : { ok: true };
+  if (error) return { error: "保存失败" };
+
+  const timeChanged = patch.startsAt !== undefined && old != null && new Date(patch.startsAt).getTime() !== new Date(old.starts_at).getTime();
+  const ruleChanged = newRrule !== undefined && old != null && (newRrule ?? null) !== (old.rrule ?? null);
+  if (timeChanged || ruleChanged) {
+    await supabase()
+      .from("Event")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("series_id", masterId)
+      .is("deleted_at", null);
+  }
+  return { ok: true };
 }
 
 // 仅此次：upsert override 子行（带这一次的完整值）。
@@ -589,6 +614,7 @@ export async function updateOccurrence(
       all_day: full.allDay ?? false,
       kind: full.kind ?? "event",
       location: full.location ?? null,
+      deleted_at: null, // 复活可能被 split/truncate 软删过的同键子行
     };
     if (full.status) upd.status = full.status;
     const { error } = await supabase().from("Event").update(upd).eq("id", existing);
@@ -621,7 +647,7 @@ export async function cancelOccurrence(
 ): Promise<{ ok: true } | { error: string }> {
   const existing = await findOverrideId(masterId, occurrenceStartISO);
   if (existing) {
-    const { error } = await supabase().from("Event").update({ status: "cancelled" }).eq("id", existing);
+    const { error } = await supabase().from("Event").update({ status: "cancelled", deleted_at: null }).eq("id", existing);
     return error ? { error: "删除失败" } : { ok: true };
   }
   const { error } = await supabase()
@@ -648,6 +674,7 @@ export async function splitSeries(
     startsAt: string;
     endsAt: string;
     kind?: EventKind;
+    status?: EventStatus;
     location?: string | null;
     recurrence?: Recurrence | null;
   },
@@ -665,8 +692,9 @@ export async function splitSeries(
     .eq("id", masterId);
   if (e1.error) return { error: "拆分失败（封口）" };
 
+  const dur = new Date(patch.endsAt).getTime() - new Date(patch.startsAt).getTime();
   const newRrule = patch.recurrence ? buildRRule(patch.recurrence, patch.startsAt) : master.rrule;
-  const newUntil = patch.recurrence ? computeRecurUntil(patch.recurrence, patch.startsAt) : master.recurUntil;
+  const newUntil = patch.recurrence ? computeRecurUntil(patch.recurrence, patch.startsAt, dur) : master.recurUntil;
   const { data: created, error: e2 } = await supabase()
     .from("Event")
     .insert({
@@ -676,7 +704,7 @@ export async function splitSeries(
       ends_at: patch.endsAt,
       all_day: master.allDay,
       kind: patch.kind ?? master.kind,
-      status: master.status,
+      status: patch.status ?? master.status,
       location: patch.location ?? master.location,
       created_by: ctx.userId,
       rrule: newRrule,
@@ -686,11 +714,12 @@ export async function splitSeries(
     .single();
   if (e2) return { error: "拆分失败（新建）" };
 
+  // 丢弃旧系列拆分点之后的 override：按 occurrence_start 或被移动后的 starts_at 任一在拆分点后（避免被移入新系列时间窗造成重复渲染）。
   await supabase()
     .from("Event")
     .update({ deleted_at: new Date().toISOString() })
     .eq("series_id", masterId)
-    .gte("occurrence_start", fromOccurrenceISO);
+    .or(`occurrence_start.gte.${fromOccurrenceISO},starts_at.gte.${fromOccurrenceISO}`);
 
   return { ok: true, newMasterId: (created as { id: string }).id };
 }

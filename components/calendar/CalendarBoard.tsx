@@ -52,6 +52,7 @@ type FormState = {
   calendarId: string;
   location: string;
   status: EventStatus;
+  allDay: boolean;
   // 重复（精简档）
   recurFreq: RecurField;
   recurWeekdays: number[]; // 0=周一..6=周日
@@ -405,6 +406,7 @@ export default function CalendarBoard() {
       calendarId: defaultCalId(),
       location: "",
       status: "confirmed",
+      allDay: false,
       ...EMPTY_RECUR,
     });
   }
@@ -426,6 +428,7 @@ export default function CalendarBoard() {
       calendarId: defaultCalId(),
       location: "",
       status: "confirmed",
+      allDay: r.allDay,
       recurFreq: rec ? rec.freq : "none",
       recurWeekdays: rec?.byWeekday ?? [],
       recurEndMode: rec?.endMode ?? "never",
@@ -435,7 +438,7 @@ export default function CalendarBoard() {
     setNlText("");
   }
 
-  function openEdit(ev: { id: string; title: string; start: Date | null; end: Date | null; extendedProps: Record<string, unknown> }) {
+  function openEdit(ev: { id: string; title: string; start: Date | null; end: Date | null; allDay?: boolean; extendedProps: Record<string, unknown> }) {
     const ep = ev.extendedProps;
     const start = ev.start ?? new Date();
     const startISO = start.toISOString();
@@ -465,6 +468,7 @@ export default function CalendarBoard() {
       calendarId: (ep.calendarId as string) ?? defaultCalId(),
       location: (ep.location as string) ?? "",
       status: (ep.status as EventStatus) ?? "confirmed",
+      allDay: ev.allDay ?? false,
       ...recur,
     });
   }
@@ -602,6 +606,7 @@ export default function CalendarBoard() {
           kind: form.kind,
           location: form.location || null,
           status: form.status,
+          allDay: form.allDay,
           recurrence,
         },
         uid,
@@ -626,6 +631,7 @@ export default function CalendarBoard() {
           kind: form.kind,
           location: form.location || null,
           status: form.status,
+          allDay: form.allDay,
           recurrence,
         });
       } else {
@@ -636,6 +642,7 @@ export default function CalendarBoard() {
           kind: form.kind,
           location: form.location || null,
           status: form.status,
+          allDay: form.allDay,
         });
       }
       setForm(null);
@@ -656,12 +663,12 @@ export default function CalendarBoard() {
       onCancel: () => {},
       run: async (scope) => {
         if (scope === "this") {
-          await updateOccurrence(masterId, occ, { calendarId, title, startsAt: startISO, endsAt: endISO, kind, location, status }, uid);
+          await updateOccurrence(masterId, occ, { calendarId, title, startsAt: startISO, endsAt: endISO, kind, location, status, allDay: form.allDay }, uid);
         } else if (scope === "thisAndFuture") {
           await splitSeries(
             masterId,
             occ,
-            { title, startsAt: startISO, endsAt: endISO, kind, location, recurrence: recurrence ?? reanchor(form.seriesRrule ?? null, startISO) },
+            { title, startsAt: startISO, endsAt: endISO, kind, location, status, recurrence: recurrence ?? reanchor(form.seriesRrule ?? null, startISO) },
             { calendarId, userId: uid },
           );
         } else {
@@ -678,6 +685,7 @@ export default function CalendarBoard() {
               kind,
               location,
               status,
+              allDay: form.allDay,
               recurrence: recurrence ?? reanchor(master.rrule, newStart),
             });
           }
@@ -926,6 +934,9 @@ export default function CalendarBoard() {
                 <option value="draft">草稿</option>
                 <option value="done">已完成</option>
               </select>
+            </label>
+            <label className={s.checkRow}>
+              <input type="checkbox" checked={form.allDay} onChange={(e) => setForm({ ...form, allDay: e.target.checked })} /> 全天
             </label>
             <label className={s.field}>
               地点

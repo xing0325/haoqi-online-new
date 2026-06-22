@@ -178,6 +178,26 @@ describe("expandWindow", () => {
   });
 });
 
+describe("时区（北京 +08:00）回归", () => {
+  it("buildRRule monthly 用北京日：北京1/1凌晨1点(=前日17:00Z) → BYMONTHDAY=1（recur#2）", () => {
+    expect(buildRRule(rec({ freq: "monthly" }), "2025-12-31T17:00:00.000Z")).toBe("FREQ=MONTHLY;BYMONTHDAY=1");
+  });
+  it("凌晨月重复展开落北京每月1号，不跳过2月", () => {
+    const rows = [
+      row({ id: "m", rrule: "FREQ=MONTHLY;BYMONTHDAY=1", startsAt: "2025-12-31T17:00:00.000Z", endsAt: "2025-12-31T18:00:00.000Z" }),
+    ];
+    const out = expandWindow(rows, "2025-12-31T16:00:00.000Z", "2026-03-15T00:00:00.000Z");
+    expect(out.map((i) => i.startsAt)).toEqual([
+      "2025-12-31T17:00:00.000Z",
+      "2026-01-31T17:00:00.000Z",
+      "2026-02-28T17:00:00.000Z",
+    ]);
+  });
+  it("describeRRule 用北京时区显示 19:00（不随运行时区漂移，recur#1）", () => {
+    expect(describeRRule("FREQ=WEEKLY", "2026-06-24T11:00:00.000Z")).toContain("19:00");
+  });
+});
+
 describe("describeRRule（人话）", () => {
   it("每周多选周几", () => {
     const s = describeRRule("FREQ=WEEKLY;BYDAY=MO,WE", DT);

@@ -94,49 +94,73 @@ export function parseNL(text: string, now: Date): NLResult {
     }
   }
 
-  // ---- 时段 ----
-  let period: "am" | "noon" | "pm" | "eve" | null = null;
-  if (/(上午|早上|早晨|清晨|今早|明早)/.test(rest)) period = "am";
-  else if (/(中午|正午)/.test(rest)) period = "noon";
-  else if (/(下午|午后)/.test(rest)) period = "pm";
-  else if (/(晚上|傍晚|夜里|今晚|明晚|夜晚|晚)/.test(rest)) period = "eve";
-  strip(/(上午|早上|早晨|清晨|今早|明早|中午|正午|下午|午后|晚上|傍晚|夜里|今晚|明晚|夜晚)/g);
-  const applyPeriod = (h: number) => {
-    if (period === "pm" || period === "eve") return h < 12 ? h + 12 : h;
-    if (period === "am") return h === 12 ? 0 : h;
-    return h; // noon / 无
+  // ---- 时段（范围两端各自识别；午夜 = 次日 0 点）----
+  type Cat = "am" | "noon" | "pm" | "eve" | null;
+  const PERIODS = "上午|早上|早晨|清晨|今早|明早|凌晨|中午|正午|下午|午后|晚上|傍晚|夜里|今晚|明晚|夜晚|半夜|午夜";
+  const cat = (w?: string): Cat => {
+    if (!w) return null;
+    if (/上午|早上|早晨|清晨|今早|明早|凌晨/.test(w)) return "am";
+    if (/中午|正午/.test(w)) return "noon";
+    if (/下午|午后/.test(w)) return "pm";
+    if (/晚上|傍晚|夜里|今晚|明晚|夜晚|半夜|午夜/.test(w)) return "eve";
+    return null;
+  };
+  const globalCat = cat((rest.match(new RegExp(PERIODS)) || [])[0]);
+  // 返回 {h, bump(是否次日)}；晚上/夜里 12 点 = 次日 0 点
+  const applyCat = (h: number, c: Cat): { h: number; bump: boolean } => {
+    if ((c === "pm" || c === "eve") && h === 12) return { h: 0, bump: c === "eve" };
+    if (c === "pm" || c === "eve") return { h: h < 12 ? h + 12 : h, bump: false };
+    if (c === "am") return { h: h === 12 ? 0 : h, bump: false };
+    if (c === "noon") return { h: h === 12 ? 12 : h < 6 ? h + 12 : h, bump: false };
+    return { h, bump: false };
   };
 
-  // ---- 时间（范围优先）----
   const minOf = (frag?: string) => (frag ? (/半/.test(frag) ? 30 : parseInt((frag.match(/(\d{1,2})/) || ["", "0"])[1], 10) || 0) : 0);
   let sh: number | null = null,
     sm = 0,
     eh: number | null = null,
-    em = 0;
-  const rangeM = rest.match(/(\d{1,2})\s*[点时](半|[:：]?\d{1,2}分?)?\s*(?:到|至|~|-|—|–)\s*(\d{1,2})\s*[点时](半|[:：]?\d{1,2}分?)?/);
+    em = 0,
+    bumpStart = false,
+    bumpEnd = false;
+  const P = `(${PERIODS})?`;
+  const T = `\\s*(\\d{1,2})\\s*[点时](半|[:：]?\\d{1,2}分?)?`;
+  const rangeM = rest.match(new RegExp(`${P}${T}\\s*(?:到|至|~|-|—|–)\\s*${P}${T}`));
   if (rangeM) {
-    sh = parseInt(rangeM[1], 10);
-    sm = minOf(rangeM[2]);
-    eh = parseInt(rangeM[3], 10);
-    em = minOf(rangeM[4]);
+    const sc = cat(rangeM[1]) ?? globalCat;
+    const ec = cat(rangeM[4]) ?? cat(rangeM[1]) ?? globalCat;
+    const a = applyCat(parseInt(rangeM[2], 10), sc);
+    const b = applyCat(parseInt(rangeM[5], 10), ec);
+    sh = a.h;
+    bumpStart = a.bump;
+    sm = minOf(rangeM[3]);
+    eh = b.h;
+    bumpEnd = b.bump;
+    em = minOf(rangeM[6]);
     strip(new RegExp(esc(rangeM[0])));
   } else {
-    const tM = rest.match(/(\d{1,2})\s*[点时](半|[:：]?\d{1,2}分?)?/) || rest.match(/(\d{1,2})[:：](\d{1,2})/);
+    const tM = rest.match(new RegExp(`${P}${T}`));
     if (tM) {
-      sh = parseInt(tM[1], 10);
-      sm = tM[0].includes(":") || tM[0].includes("：") ? parseInt(tM[2] || "0", 10) : minOf(tM[2]);
+      const a = applyCat(parseInt(tM[2], 10), cat(tM[1]) ?? globalCat);
+      sh = a.h;
+      bumpStart = a.bump;
+      sm = minOf(tM[3]);
       strip(new RegExp(esc(tM[0])));
+    } else {
+      const cM = rest.match(/(\d{1,2})[:：](\d{1,2})/);
+      if (cM) {
+        const a = applyCat(parseInt(cM[1], 10), globalCat);
+        sh = a.h;
+        bumpStart = a.bump;
+        sm = parseInt(cM[2], 10);
+        strip(new RegExp(esc(cM[0])));
+      }
     }
   }
-  if (sh === null && period) {
-    sh = period === "am" ? 9 : period === "noon" ? 12 : period === "pm" ? 14 : 19;
-  } else if (sh !== null) {
-    sh = applyPeriod(sh);
-    if (eh !== null) eh = applyPeriod(eh);
-  }
+  if (sh === null && globalCat) sh = globalCat === "am" ? 9 : globalCat === "noon" ? 12 : globalCat === "pm" ? 14 : 19;
   const hasTime = sh !== null;
+  strip(new RegExp(PERIODS, "g")); // 清残留时段词（标题用）
 
-  // ---- 时长 ----
+  // ---- 时长（半小时 与 分钟 互斥，不叠加）----
   let durMin: number | null = null;
   if (/半(?:个)?小时/.test(rest)) {
     durMin = 30;
@@ -147,11 +171,11 @@ export function parseNL(text: string, now: Date): NLResult {
       durMin = parseInt(hrM[1], 10) * 60;
       strip(new RegExp(esc(hrM[0])));
     }
-  }
-  const minM = rest.match(/(\d+)\s*分钟/);
-  if (minM) {
-    durMin = (durMin ?? 0) + parseInt(minM[1], 10);
-    strip(new RegExp(esc(minM[0])));
+    const minM = rest.match(/(\d+)\s*分钟/);
+    if (minM) {
+      durMin = (durMin ?? 0) + parseInt(minM[1], 10);
+      strip(new RegExp(esc(minM[0])));
+    }
   }
 
   if (!hasDay && !hasTime && !recurrence) return null;
@@ -164,12 +188,15 @@ export function parseNL(text: string, now: Date): NLResult {
 
   const allDay = !hasTime;
   const start = new Date(base);
+  if (bumpStart) start.setDate(start.getDate() + 1);
   if (hasTime) start.setHours(sh as number, sm, 0, 0);
   const end = new Date(start);
   if (allDay) end.setDate(end.getDate() + 1);
   else if (eh !== null) {
     end.setHours(eh, em, 0, 0);
-    if (end.getTime() <= start.getTime()) end.setDate(end.getDate() + 1);
+    if (bumpEnd && !bumpStart) end.setDate(end.getDate() + 1);
+    if (end.getTime() < start.getTime()) end.setDate(end.getDate() + 1);
+    if (end.getTime() === start.getTime()) end.setMinutes(end.getMinutes() + 60); // 零时长 → 默认 1h
   } else end.setMinutes(end.getMinutes() + (durMin ?? 60));
 
   // ---- 标题 ----
