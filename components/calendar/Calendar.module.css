@@ -5,6 +5,21 @@
 }
 .head {
   margin-bottom: 16px;
+  position: relative;
+}
+.cloud {
+  position: absolute;
+  top: -4px;
+  right: 0;
+  width: 96px;
+  height: 38px;
+  opacity: 0.85;
+  pointer-events: none;
+}
+@media (max-width: 640px) {
+  .cloud {
+    display: none;
+  }
 }
 .eyebrow {
   margin: 0 0 8px;
@@ -192,6 +207,115 @@
   cursor: not-allowed;
   box-shadow: none;
 }
+/* 底部漂浮"药丸"视图切换 */
+.pills {
+  position: sticky;
+  bottom: 18px;
+  margin: 18px auto 0;
+  width: fit-content;
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 26px rgba(14, 24, 39, 0.12);
+  backdrop-filter: blur(6px);
+  z-index: 20;
+}
+.pill {
+  border: 0;
+  background: none;
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 750;
+  color: #6b7789;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s;
+}
+.pill:hover {
+  color: var(--ink);
+}
+.pillOn {
+  background: var(--ink);
+  color: #fff;
+}
+
+/* 重复选择器 */
+.recurBox {
+  margin: 6px 0 12px;
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+}
+.recurBox .field {
+  margin-bottom: 8px;
+}
+.weekdays {
+  display: flex;
+  gap: 6px;
+  margin: 2px 0 10px;
+  flex-wrap: wrap;
+}
+.wd {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: #6b7789;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  font-family: inherit;
+}
+.wdOn {
+  background: #5b9be0;
+  border-color: #5b9be0;
+  color: #fff;
+}
+.recurPreview {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #5b9be0;
+}
+
+/* 作用范围弹窗 */
+.scopeModal {
+  width: min(360px, 100%);
+  text-align: center;
+}
+.scopeHint {
+  margin: -8px 0 16px;
+  font-size: 13px;
+  color: #768297;
+}
+.scopeBtns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.scopeBtns button {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  font-size: 14px;
+  font-weight: 750;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: inherit;
+}
+.scopeBtns button:hover {
+  border-color: #5b9be0;
+  background: #f2f8ff;
+}
+
 @media (max-width: 720px) {
   .row {
     flex-direction: column;

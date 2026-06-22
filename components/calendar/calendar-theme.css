@@ -79,3 +79,82 @@
 .fc .fc-timegrid-now-indicator-arrow {
   border-color: #ee725c;
 }
+
+/* 重复角标 ↻ */
+.fc-event.fc-recur .fc-event-title::before,
+.fc-list-event.fc-recur .fc-list-event-title::before {
+  content: "↻ ";
+  opacity: 0.6;
+  font-weight: 700;
+}
+
+/* 日程(list)视图：圆形勾选 + done 删除线 */
+.hq-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid #c2cbd8;
+  background: #fff;
+  cursor: pointer;
+  padding: 0;
+  vertical-align: middle;
+}
+.hq-check:hover {
+  border-color: #4cb88a;
+}
+.hq-check-on {
+  background: #4cb88a;
+  border-color: #4cb88a;
+}
+.hq-check-on::after {
+  content: "✓";
+  color: #fff;
+  font-size: 11px;
+  line-height: 15px;
+  display: block;
+  text-align: center;
+}
+.fc-list-event.fc-done .fc-list-event-title {
+  text-decoration: line-through;
+  color: #9aa3b0;
+}
+.fc .fc-list-event:hover td {
+  background: #f6f8fc;
+}
+
+/* 年视图：个人忙碌度热力 */
+.fc-multimonth .fc-daygrid-event-harness,
+.fc-multimonth .fc-daygrid-more-link {
+  display: none;
+}
+.fc .fc-daygrid-day.hq-heat-1 {
+  background: rgba(91, 155, 224, 0.12);
+}
+.fc .fc-daygrid-day.hq-heat-2 {
+  background: rgba(91, 155, 224, 0.24);
+}
+.fc .fc-daygrid-day.hq-heat-3 {
+  background: rgba(91, 155, 224, 0.4);
+}
+.fc-multimonth-title {
+  font-weight: 800;
+  color: #18243b;
+}
+
+/* 月视图溢出 "+N" popover */
+.fc .fc-popover {
+  border: 1px solid #ece9e0;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(14, 24, 39, 0.18);
+  overflow: hidden;
+}
+.fc .fc-popover-header {
+  background: #f6f5f0;
+  color: #18243b;
+  font-weight: 700;
+}
+.fc .fc-daygrid-more-link {
+  font-size: 11px;
+  font-weight: 700;
+  color: #5b9be0;
+}

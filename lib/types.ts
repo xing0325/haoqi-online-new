@@ -118,6 +118,9 @@ export type Calendar = {
   color: string | null;
   visibility: "private" | "public";
 };
+export type EventKind = "event" | "timeblock";
+export type EventStatus = "draft" | "confirmed" | "done" | "cancelled";
+
 export type CalEvent = {
   id: string;
   calendarId: string;
@@ -125,9 +128,48 @@ export type CalEvent = {
   startsAt: string;
   endsAt: string;
   allDay: boolean;
-  kind: "event" | "timeblock";
-  status: "draft" | "confirmed" | "done" | "cancelled";
+  kind: EventKind;
+  status: EventStatus;
   location: string | null;
+  // 重复（切片 1.5）：
+  // 母事件 = rrule 非空 + seriesId null；override/exception 子行 = seriesId+occurrenceStart 非空；普通单次 = 三者皆 null。
+  rrule: string | null; // 母事件的 RFC5545 RRULE（不含 DTSTART）
+  recurUntil: string | null; // 母事件末次出现起始（范围查询剪枝用）
+  seriesId: string | null; // 子行 → 母事件 id
+  occurrenceStart: string | null; // 子行覆盖的"那次"的原始起始（recurrence-id）
+};
+
+/** 改/删重复事件的作用范围。 */
+export type EditScope = "this" | "thisAndFuture" | "all";
+
+export type RecurFreq = "daily" | "weekly" | "monthly" | "yearly";
+
+/** 人类精简档构造重复的结构（UI 用）；`lib/recurrence.ts` 转成 RRULE 串存库。 */
+export type Recurrence = {
+  freq: RecurFreq;
+  interval: number; // 每 N（UI 默认 1、不露；Agent 可设）
+  byWeekday: number[]; // 仅 weekly 用；0=周一 .. 6=周日（与 rrule.js .weekday 一致）
+  endMode: "never" | "until" | "count";
+  until: string | null; // endMode='until' 的截止日（ISO date）
+  count: number | null; // endMode='count' 的次数
+};
+
+/** 展开后喂给 FullCalendar 的一个实例（单次或某一次重复）。 */
+export type CalInstance = {
+  instanceId: string; // 单次=row.id；重复=`${masterId}::${occISO}`
+  masterId: string | null; // 重复实例的母 id；单次为 null
+  occurrenceStart: string | null; // 重复实例的原始 occ 起始（ISO）；单次为 null
+  overrideId: string | null; // 该 occ 被某 override 子行覆盖时，子行 id
+  calendarId: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  allDay: boolean;
+  kind: EventKind;
+  status: EventStatus;
+  location: string | null;
+  isRecurring: boolean;
+  seriesRrule: string | null; // 母事件的 RRULE（给编辑器回填精简档）；单次/无母为 null
 };
 /** 课表 slot 转成 FullCalendar 重复事件输入。 */
 export type ScheduleRecurring = {

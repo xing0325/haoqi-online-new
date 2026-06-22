@@ -1,18 +1,23 @@
 // 取数层（真 Supabase 实现）。登录后用 anon 客户端按 RLS 查询。
 // 课程/课表/动态/帖子/评论 = 真数据；大家正在/积分/阅读 = 诚实占位（对应模块尚未建）。
 import { supabase } from "./supabase/browser";
+import { buildRRule, computeRecurUntil, expandWindow, withUntil } from "./recurrence";
 import type {
   AvatarColor,
   CalEvent,
+  CalInstance,
   Calendar,
   CommentItem,
   Course,
   CourseListItem,
+  EventKind,
+  EventStatus,
   FeedPost,
   PostDetail,
   PostListItem,
   PulseItem,
   ReadingSummary,
+  Recurrence,
   ScheduleEntry,
   ScheduleRecurring,
   ScoreSummary,
@@ -324,6 +329,9 @@ const COURSE_HEX: Record<string, string> = {
   pink: "#ef8aa0",
 };
 
+const EVENT_COLS =
+  "id, calendar_id, title, starts_at, ends_at, all_day, kind, status, location, rrule, recur_until, series_id, occurrence_start";
+
 function toCalEvent(e: any): CalEvent {
   return {
     id: e.id,
@@ -335,6 +343,10 @@ function toCalEvent(e: any): CalEvent {
     kind: e.kind,
     status: e.status,
     location: e.location ?? null,
+    rrule: e.rrule ?? null,
+    recurUntil: e.recur_until ?? null,
+    seriesId: e.series_id ?? null,
+    occurrenceStart: e.occurrence_start ?? null,
   };
 }
 
@@ -397,6 +409,50 @@ export async function getEventsInRange(
   return (data ?? []).map(toCalEvent);
 }
 
+// 取单行（给重复"整个系列"编辑算 delta 用）。
+export async function getEvent(id: string): Promise<CalEvent | null> {
+  const { data } = await supabase().from("Event").select(EVENT_COLS).eq("id", id).maybeSingle();
+  return data ? toCalEvent(data) : null;
+}
+
+// 含重复展开的取数：单次 + 母事件 + 子行（override/exception）→ 在 [from,to] 窗内展开成实例。
+export async function getEventsForWindow(
+  calendarIds: string[],
+  fromISO: string,
+  toISO: string,
+): Promise<CalInstance[]> {
+  if (calendarIds.length === 0) return [];
+  const sb = supabase();
+  const [singles, masters, children] = await Promise.all([
+    sb
+      .from("Event")
+      .select(EVENT_COLS)
+      .in("calendar_id", calendarIds)
+      .is("deleted_at", null)
+      .is("rrule", null)
+      .is("series_id", null)
+      .lt("starts_at", toISO)
+      .gt("ends_at", fromISO),
+    sb
+      .from("Event")
+      .select(EVENT_COLS)
+      .in("calendar_id", calendarIds)
+      .is("deleted_at", null)
+      .not("rrule", "is", null)
+      .is("series_id", null)
+      .lte("starts_at", toISO)
+      .or(`recur_until.is.null,recur_until.gte.${fromISO}`),
+    sb
+      .from("Event")
+      .select(EVENT_COLS)
+      .in("calendar_id", calendarIds)
+      .is("deleted_at", null)
+      .not("series_id", "is", null),
+  ]);
+  const rows = [...(singles.data ?? []), ...(masters.data ?? []), ...(children.data ?? [])].map(toCalEvent);
+  return expandWindow(rows, fromISO, toISO);
+}
+
 export async function createEvent(
   input: {
     calendarId: string;
@@ -404,25 +460,27 @@ export async function createEvent(
     startsAt: string;
     endsAt: string;
     allDay?: boolean;
-    kind?: "event" | "timeblock";
+    kind?: EventKind;
     location?: string | null;
+    recurrence?: Recurrence | null;
   },
   userId: string,
 ): Promise<CalEvent | { error: string }> {
-  const { data, error } = await supabase()
-    .from("Event")
-    .insert({
-      calendar_id: input.calendarId,
-      title: input.title,
-      starts_at: input.startsAt,
-      ends_at: input.endsAt,
-      all_day: input.allDay ?? false,
-      kind: input.kind ?? "event",
-      location: input.location ?? null,
-      created_by: userId,
-    })
-    .select("id, calendar_id, title, starts_at, ends_at, all_day, kind, status, location")
-    .single();
+  const row: Record<string, unknown> = {
+    calendar_id: input.calendarId,
+    title: input.title,
+    starts_at: input.startsAt,
+    ends_at: input.endsAt,
+    all_day: input.allDay ?? false,
+    kind: input.kind ?? "event",
+    location: input.location ?? null,
+    created_by: userId,
+  };
+  if (input.recurrence) {
+    row.rrule = buildRRule(input.recurrence, input.startsAt);
+    row.recur_until = computeRecurUntil(input.recurrence, input.startsAt);
+  }
+  const { data, error } = await supabase().from("Event").insert(row).select(EVENT_COLS).single();
   if (error) return { error: error.code === "42501" ? "没权限往这个日历写。" : "新建失败，再试一次。" };
   return toCalEvent(data);
 }
@@ -461,6 +519,208 @@ export async function updateEvent(
 export async function softDeleteEvent(id: string): Promise<{ ok: true } | { error: string }> {
   const { error } = await supabase().from("Event").update({ deleted_at: new Date().toISOString() }).eq("id", id);
   return error ? { error: "删除失败" } : { ok: true };
+}
+
+// ---- 重复系列能力 API（精简 UI 与未来 Agent 共用同一套）----
+
+async function findOverrideId(masterId: string, occurrenceStartISO: string): Promise<string | null> {
+  const { data } = await supabase()
+    .from("Event")
+    .select("id")
+    .eq("series_id", masterId)
+    .eq("occurrence_start", occurrenceStartISO)
+    .is("deleted_at", null)
+    .maybeSingle();
+  return (data as { id: string } | null)?.id ?? null;
+}
+
+// 整个系列：改母事件字段 / 规律。改规律时需同时给 startsAt（构造 RRULE 用）。
+export async function updateSeries(
+  masterId: string,
+  patch: {
+    title?: string;
+    startsAt?: string;
+    endsAt?: string;
+    kind?: EventKind;
+    status?: EventStatus;
+    location?: string | null;
+    recurrence?: Recurrence | null;
+  },
+): Promise<{ ok: true } | { error: string }> {
+  const row: Record<string, unknown> = {};
+  if (patch.title !== undefined) row.title = patch.title;
+  if (patch.startsAt !== undefined) row.starts_at = patch.startsAt;
+  if (patch.endsAt !== undefined) row.ends_at = patch.endsAt;
+  if (patch.kind !== undefined) row.kind = patch.kind;
+  if (patch.status !== undefined) row.status = patch.status;
+  if (patch.location !== undefined) row.location = patch.location;
+  if (patch.recurrence !== undefined && patch.startsAt) {
+    row.rrule = patch.recurrence ? buildRRule(patch.recurrence, patch.startsAt) : null;
+    row.recur_until = patch.recurrence ? computeRecurUntil(patch.recurrence, patch.startsAt) : null;
+  }
+  const { error } = await supabase().from("Event").update(row).eq("id", masterId);
+  return error ? { error: "保存失败" } : { ok: true };
+}
+
+// 仅此次：upsert override 子行（带这一次的完整值）。
+export async function updateOccurrence(
+  masterId: string,
+  occurrenceStartISO: string,
+  full: {
+    calendarId: string;
+    title: string;
+    startsAt: string;
+    endsAt: string;
+    allDay?: boolean;
+    kind?: EventKind;
+    location?: string | null;
+    status?: EventStatus;
+  },
+  userId: string,
+): Promise<{ ok: true } | { error: string }> {
+  const existing = await findOverrideId(masterId, occurrenceStartISO);
+  if (existing) {
+    const upd: Record<string, unknown> = {
+      title: full.title,
+      starts_at: full.startsAt,
+      ends_at: full.endsAt,
+      all_day: full.allDay ?? false,
+      kind: full.kind ?? "event",
+      location: full.location ?? null,
+    };
+    if (full.status) upd.status = full.status;
+    const { error } = await supabase().from("Event").update(upd).eq("id", existing);
+    return error ? { error: "保存失败" } : { ok: true };
+  }
+  const { error } = await supabase()
+    .from("Event")
+    .insert({
+      calendar_id: full.calendarId,
+      title: full.title,
+      starts_at: full.startsAt,
+      ends_at: full.endsAt,
+      all_day: full.allDay ?? false,
+      kind: full.kind ?? "event",
+      status: full.status ?? "confirmed",
+      location: full.location ?? null,
+      created_by: userId,
+      series_id: masterId,
+      occurrence_start: occurrenceStartISO,
+    });
+  return error ? { error: error.code === "42501" ? "没权限。" : "保存失败" } : { ok: true };
+}
+
+// 删此次：upsert status='cancelled' 子行（exception）。
+export async function cancelOccurrence(
+  masterId: string,
+  occurrenceStartISO: string,
+  base: { calendarId: string; title: string; startsAt: string; endsAt: string },
+  userId: string,
+): Promise<{ ok: true } | { error: string }> {
+  const existing = await findOverrideId(masterId, occurrenceStartISO);
+  if (existing) {
+    const { error } = await supabase().from("Event").update({ status: "cancelled" }).eq("id", existing);
+    return error ? { error: "删除失败" } : { ok: true };
+  }
+  const { error } = await supabase()
+    .from("Event")
+    .insert({
+      calendar_id: base.calendarId,
+      title: base.title,
+      starts_at: base.startsAt,
+      ends_at: base.endsAt,
+      status: "cancelled",
+      created_by: userId,
+      series_id: masterId,
+      occurrence_start: occurrenceStartISO,
+    });
+  return error ? { error: "删除失败" } : { ok: true };
+}
+
+// 此次及以后：旧母封口(UNTIL) + 从这次起新建母事件 + 丢弃旧系列未来的 override（v1 简化）。
+export async function splitSeries(
+  masterId: string,
+  fromOccurrenceISO: string,
+  patch: {
+    title?: string;
+    startsAt: string;
+    endsAt: string;
+    kind?: EventKind;
+    location?: string | null;
+    recurrence?: Recurrence | null;
+  },
+  ctx: { calendarId: string; userId: string },
+): Promise<{ ok: true; newMasterId?: string } | { error: string }> {
+  const { data: m } = await supabase().from("Event").select(EVENT_COLS).eq("id", masterId).maybeSingle();
+  if (!m) return { error: "找不到原系列" };
+  const master = toCalEvent(m);
+  if (!master.rrule) return { error: "这不是重复系列" };
+
+  const untilInstant = new Date(new Date(fromOccurrenceISO).getTime() - 1000).toISOString();
+  const e1 = await supabase()
+    .from("Event")
+    .update({ rrule: withUntil(master.rrule, untilInstant), recur_until: untilInstant })
+    .eq("id", masterId);
+  if (e1.error) return { error: "拆分失败（封口）" };
+
+  const newRrule = patch.recurrence ? buildRRule(patch.recurrence, patch.startsAt) : master.rrule;
+  const newUntil = patch.recurrence ? computeRecurUntil(patch.recurrence, patch.startsAt) : master.recurUntil;
+  const { data: created, error: e2 } = await supabase()
+    .from("Event")
+    .insert({
+      calendar_id: ctx.calendarId,
+      title: patch.title ?? master.title,
+      starts_at: patch.startsAt,
+      ends_at: patch.endsAt,
+      all_day: master.allDay,
+      kind: patch.kind ?? master.kind,
+      status: master.status,
+      location: patch.location ?? master.location,
+      created_by: ctx.userId,
+      rrule: newRrule,
+      recur_until: newUntil,
+    })
+    .select("id")
+    .single();
+  if (e2) return { error: "拆分失败（新建）" };
+
+  await supabase()
+    .from("Event")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("series_id", masterId)
+    .gte("occurrence_start", fromOccurrenceISO);
+
+  return { ok: true, newMasterId: (created as { id: string }).id };
+}
+
+// 删此次及以后：旧母封口(UNTIL = 这次前一秒) + 丢弃该点起的 override 子行。
+export async function truncateSeries(
+  masterId: string,
+  fromOccurrenceISO: string,
+): Promise<{ ok: true } | { error: string }> {
+  const { data: m } = await supabase().from("Event").select("rrule").eq("id", masterId).maybeSingle();
+  const rrule = (m as { rrule: string | null } | null)?.rrule;
+  if (!rrule) return { error: "这不是重复系列" };
+  const untilInstant = new Date(new Date(fromOccurrenceISO).getTime() - 1000).toISOString();
+  const e1 = await supabase()
+    .from("Event")
+    .update({ rrule: withUntil(rrule, untilInstant), recur_until: untilInstant })
+    .eq("id", masterId);
+  if (e1.error) return { error: "删除失败" };
+  await supabase()
+    .from("Event")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("series_id", masterId)
+    .gte("occurrence_start", fromOccurrenceISO);
+  return { ok: true };
+}
+
+// 整系列软删：母 + 全部子行。
+export async function deleteSeries(masterId: string): Promise<{ ok: true } | { error: string }> {
+  const now = new Date().toISOString();
+  const e1 = await supabase().from("Event").update({ deleted_at: now }).eq("id", masterId);
+  const e2 = await supabase().from("Event").update({ deleted_at: now }).eq("series_id", masterId);
+  return e1.error || e2.error ? { error: "删除失败" } : { ok: true };
 }
 
 // 课表（只读层）→ FullCalendar 重复事件输入。
