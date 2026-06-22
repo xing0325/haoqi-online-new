@@ -334,6 +334,10 @@ const COURSE_HEX: Record<string, string> = {
 const EVENT_COLS =
   "id, calendar_id, title, starts_at, ends_at, all_day, kind, status, location, rrule, recur_until, series_id, occurrence_start";
 
+// 去掉 RRULE 尾部结束边界(UNTIL/COUNT)，只留影响"发生时刻网格"的部分（判断是否需清旧覆盖用）。
+const stripEndParts = (r: string | null | undefined): string =>
+  r ? r.split(";").filter((p) => !/^(UNTIL|COUNT)=/i.test(p)).join(";") : "";
+
 function toCalEvent(e: any): CalEvent {
   return {
     id: e.id,
@@ -556,9 +560,9 @@ export async function updateSeries(
     recurrence?: Recurrence | null;
   },
 ): Promise<{ ok: true } | { error: string }> {
-  // 取旧值：若整组改了时间/规律，旧的单次覆盖(occurrence_start 锚点)会失配 → 必须一并清掉，否则孤儿+重复渲染。
-  const { data: cur } = await supabase().from("Event").select("starts_at, rrule").eq("id", masterId).maybeSingle();
-  const old = cur as { starts_at: string; rrule: string | null } | null;
+  // 取旧值：判断"发生时刻网格"是否变了，决定要不要清失配的旧单次覆盖。
+  const { data: cur } = await supabase().from("Event").select("starts_at, ends_at, rrule").eq("id", masterId).maybeSingle();
+  const old = cur as { starts_at: string; ends_at: string; rrule: string | null } | null;
 
   const row: Record<string, unknown> = {};
   if (patch.title !== undefined) row.title = patch.title;
@@ -569,19 +573,25 @@ export async function updateSeries(
   if (patch.status !== undefined) row.status = patch.status;
   if (patch.location !== undefined) row.location = patch.location;
   let newRrule: string | null | undefined;
-  if (patch.recurrence !== undefined && patch.startsAt) {
-    const dur = patch.endsAt ? new Date(patch.endsAt).getTime() - new Date(patch.startsAt).getTime() : 0;
-    newRrule = patch.recurrence ? buildRRule(patch.recurrence, patch.startsAt) : null;
-    row.rrule = newRrule;
-    row.recur_until = patch.recurrence ? computeRecurUntil(patch.recurrence, patch.startsAt, dur) : null;
+  if (patch.recurrence !== undefined) {
+    // 改/清规律不依赖 patch.startsAt：缺省回退旧起始（否则只改规律会被静默吞掉）。
+    const anchor = patch.startsAt ?? old?.starts_at;
+    if (anchor) {
+      const dur = new Date(patch.endsAt ?? old?.ends_at ?? anchor).getTime() - new Date(anchor).getTime();
+      newRrule = patch.recurrence ? buildRRule(patch.recurrence, anchor) : null;
+      row.rrule = newRrule;
+      row.recur_until = patch.recurrence ? computeRecurUntil(patch.recurrence, anchor, dur) : null;
+    }
   }
 
   const { error } = await supabase().from("Event").update(row).eq("id", masterId);
   if (error) return { error: "保存失败" };
 
+  // 只有"发生时刻网格"变了(起始时间 或 FREQ/INTERVAL/BYDAY/BYMONTHDAY)才清旧覆盖；
+  // 只改结束边界(UNTIL/COUNT，如延长/缩短次数)不动覆盖——否则会误删用户的单次修改(高危数据丢失)。
   const timeChanged = patch.startsAt !== undefined && old != null && new Date(patch.startsAt).getTime() !== new Date(old.starts_at).getTime();
-  const ruleChanged = newRrule !== undefined && old != null && (newRrule ?? null) !== (old.rrule ?? null);
-  if (timeChanged || ruleChanged) {
+  const gridChanged = newRrule !== undefined && old != null && stripEndParts(newRrule) !== stripEndParts(old.rrule);
+  if (timeChanged || gridChanged) {
     await supabase()
       .from("Event")
       .update({ deleted_at: new Date().toISOString() })
@@ -808,8 +818,16 @@ export async function updateTask(
   return error ? { error: "保存失败" } : { ok: true };
 }
 
-// 把任务挂到已建的日历事件（停车场拖/点入日历后回写）。
-export async function scheduleTask(taskId: string, eventId: string): Promise<{ ok: true } | { error: string }> {
+// 把任务挂到已建的日历事件（停车场拖/点入日历后回写）。校验该事件属于本人日历，禁止挂别人的事件。
+export async function scheduleTask(taskId: string, eventId: string, userId: string): Promise<{ ok: true } | { error: string }> {
+  const { data: ev } = await supabase().from("Event").select("calendar_id").eq("id", eventId).maybeSingle();
+  if (!ev) return { error: "事件不存在或无权访问" };
+  const { data: cal } = await supabase()
+    .from("Calendar")
+    .select("owner_id")
+    .eq("id", (ev as { calendar_id: string }).calendar_id)
+    .maybeSingle();
+  if (!cal || (cal as { owner_id: string }).owner_id !== userId) return { error: "只能关联自己的事件" };
   return updateTask(taskId, { scheduledEventId: eventId });
 }
 

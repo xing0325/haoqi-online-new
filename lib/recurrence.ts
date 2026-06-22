@@ -26,9 +26,18 @@ function rruleUntilToDate(u: string): string {
 // 北京固定 +08:00（中国无夏令时）：把真实瞬时 +8h 当伪 UTC，按北京"墙上时间"展开/取分量。
 const BJ = 8 * 3600 * 1000;
 const toBJ = (iso: string) => new Date(new Date(iso).getTime() + BJ);
+function fromRRuleUTC(s: string): Date {
+  const m = s.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);
+  return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6])) : new Date(s);
+}
 
 function makeRule(rruleStr: string, dtstartISO: string): RRule {
-  return rrulestr(`DTSTART:${toRRuleUTC(toBJ(dtstartISO).toISOString())}\nRRULE:${rruleStr}`) as RRule;
+  // UNTIL 必须与 occurrence 同帧（都 +8h 伪 UTC），否则有效截止偏 8 小时（含 split 的 occ 边界）。
+  const shifted = rruleStr.replace(
+    /UNTIL=(\d{8}T\d{6}Z)/i,
+    (_m, v) => `UNTIL=${toRRuleUTC(new Date(fromRRuleUTC(v).getTime() + BJ).toISOString())}`,
+  );
+  return rrulestr(`DTSTART:${toRRuleUTC(toBJ(dtstartISO).toISOString())}\nRRULE:${shifted}`) as RRule;
 }
 
 /** 给 RRULE 串设置 UNTIL（去掉 COUNT/旧 UNTIL）；系列拆分时给旧母封口。 */

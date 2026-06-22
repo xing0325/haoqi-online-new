@@ -196,6 +196,17 @@ describe("时区（北京 +08:00）回归", () => {
   it("describeRRule 用北京时区显示 19:00（不随运行时区漂移，recur#1）", () => {
     expect(describeRRule("FREQ=WEEKLY", "2026-06-24T11:00:00.000Z")).toContain("19:00");
   });
+  it("UNTIL 与展开同帧：末次=UNTIL 当刻仍含入（recur#1 死区）", () => {
+    const rows = [
+      row({ id: "m", rrule: "FREQ=DAILY;UNTIL=20260603T110000Z", startsAt: "2026-06-01T11:00:00.000Z", endsAt: "2026-06-01T11:30:00.000Z" }),
+    ];
+    const out = expandWindow(rows, "2026-06-01T00:00:00.000Z", "2026-06-10T00:00:00.000Z");
+    expect(out.map((i) => i.startsAt)).toEqual([
+      "2026-06-01T11:00:00.000Z",
+      "2026-06-02T11:00:00.000Z",
+      "2026-06-03T11:00:00.000Z",
+    ]);
+  });
 });
 
 describe("describeRRule（人话）", () => {

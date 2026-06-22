@@ -26,16 +26,21 @@ export default function TasksPanel({
   onSchedule: (t: Task) => void;
 }) {
   const [open, setOpen] = useState(true);
+  const [showDone, setShowDone] = useState(false);
   const [title, setTitle] = useState("");
   const [due, setDue] = useState("");
 
-  const unscheduled = tasks.filter((t) => t.status === "todo" && !t.scheduledEventId);
-  const sorted = [...unscheduled].sort((a, b) => {
+  const parking = tasks.filter((t) => !t.scheduledEventId); // 未安排（含已完成）
+  const todoCount = parking.filter((t) => t.status === "todo").length;
+  const visible = showDone ? parking : parking.filter((t) => t.status === "todo");
+  const sorted = [...visible].sort((a, b) => {
+    if ((a.status === "done") !== (b.status === "done")) return a.status === "done" ? 1 : -1; // 已完成沉底
     if (a.dueAt && b.dueAt) return a.dueAt.localeCompare(b.dueAt);
     if (a.dueAt) return -1;
     if (b.dueAt) return 1;
     return a.createdAt.localeCompare(b.createdAt);
   });
+  const doneCount = parking.length - todoCount;
 
   function add() {
     if (!title.trim()) return;
@@ -48,7 +53,7 @@ export default function TasksPanel({
     <div className={s.panel}>
       <button type="button" className={s.head} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className={s.headTitle}>任务停车场</span>
-        <span className={s.count}>{sorted.length}</span>
+        <span className={s.count}>{todoCount}</span>
         <span className={s.chev}>{open ? "▾" : "▸"}</span>
       </button>
       {open && (
@@ -75,20 +80,33 @@ export default function TasksPanel({
               加
             </button>
           </div>
+          {doneCount > 0 && (
+            <label className={s.showDoneToggle}>
+              <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> 显示已完成（{doneCount}）
+            </label>
+          )}
           {sorted.length === 0 ? (
             <p className={s.empty}>没有待安排的任务。脑子里的事先扔进来，再拖到日历上排时间。</p>
           ) : (
             <ul className={s.list}>
               {sorted.map((t) => {
                 const dl = dueLabel(t.dueAt);
+                const done = t.status === "done";
                 return (
                   <li key={t.id} className={s.item}>
-                    <button type="button" className={s.check} aria-label="标记完成" onClick={() => onToggle(t)} />
-                    <span className={s.titleText}>{t.title}</span>
-                    {dl && <span className={`${s.due} ${dl.risk ? s.dueRisk : ""}`}>{dl.text}</span>}
-                    <button type="button" className={s.sched} onClick={() => onSchedule(t)}>
-                      安排
-                    </button>
+                    <button
+                      type="button"
+                      className={`${s.check} ${done ? s.checkOn : ""}`}
+                      aria-label={done ? "取消完成" : "标记完成"}
+                      onClick={() => onToggle(t)}
+                    />
+                    <span className={`${s.titleText} ${done ? s.titleDone : ""}`}>{t.title}</span>
+                    {dl && !done && <span className={`${s.due} ${dl.risk ? s.dueRisk : ""}`}>{dl.text}</span>}
+                    {!done && (
+                      <button type="button" className={s.sched} onClick={() => onSchedule(t)}>
+                        安排
+                      </button>
+                    )}
                     <button type="button" className={s.del} aria-label="删除任务" onClick={() => onDelete(t)}>
                       ×
                     </button>

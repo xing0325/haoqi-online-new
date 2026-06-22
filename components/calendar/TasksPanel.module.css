@@ -120,6 +120,35 @@
 .check:hover {
   border-color: #4cb88a;
 }
+.checkOn {
+  background: #4cb88a;
+  border-color: #4cb88a;
+}
+.checkOn::after {
+  content: "✓";
+  color: #fff;
+  font-size: 11px;
+  line-height: 15px;
+  display: block;
+  text-align: center;
+}
+.titleDone {
+  text-decoration: line-through;
+  color: #9aa3b0;
+}
+.showDoneToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #768297;
+  cursor: pointer;
+}
+.showDoneToggle input {
+  accent-color: #18243b;
+}
 .titleText {
   flex: 1;
   font-size: 14px;

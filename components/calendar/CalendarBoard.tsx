@@ -665,14 +665,24 @@ export default function CalendarBoard() {
         showToast(res.error, null);
         return;
       }
+      let linkErr: string | null = null;
       if (form.linkTaskId) {
-        await scheduleTask(form.linkTaskId, res.id);
-        refreshTasks();
+        const lr = await scheduleTask(form.linkTaskId, res.id, uid);
+        if ("error" in lr) linkErr = lr.error;
+        else refreshTasks();
       }
       setForm(null);
       await fetchAndRebuild();
       showToast(
-        form.linkTaskId ? "已安排到日历" : recurrence ? "已新建重复日程" : overlaps(startISO, endISO) ? "已新建 · 与其它日程重叠" : "已新建",
+        form.linkTaskId
+          ? linkErr
+            ? "事件已建，但关联任务失败：" + linkErr
+            : "已安排到日历"
+          : recurrence
+            ? "已新建重复日程"
+            : overlaps(startISO, endISO)
+              ? "已新建 · 与其它日程重叠"
+              : "已新建",
         null,
       );
       return;
