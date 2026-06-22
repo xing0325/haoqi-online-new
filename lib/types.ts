@@ -171,6 +171,18 @@ export type CalInstance = {
   isRecurring: boolean;
   seriesRrule: string | null; // 母事件的 RRULE（给编辑器回填精简档）；单次/无母为 null
 };
+
+export type TaskStatus = "todo" | "done";
+/** 个人任务（停车场用，切片 1.9）。与做事空间 ProjectTask 分开。 */
+export type Task = {
+  id: string;
+  title: string;
+  notes: string | null;
+  dueAt: string | null;
+  status: TaskStatus;
+  scheduledEventId: string | null; // 已安排成时间块 → 关联的 Event id
+  createdAt: string;
+};
 /** 课表 slot 转成 FullCalendar 重复事件输入。 */
 export type ScheduleRecurring = {
   title: string;

@@ -13,24 +13,30 @@ import { useAuth } from "@/components/auth/AuthProvider";
 import {
   cancelOccurrence,
   createEvent,
+  createTask,
   deleteSeries,
   ensureDefaultCalendars,
   getEvent,
   getEventsForWindow,
   getMyCalendars,
   getScheduleAsRecurring,
+  getTasks,
+  scheduleTask,
   softDeleteEvent,
+  softDeleteTask,
   splitSeries,
   truncateSeries,
   updateEvent,
   updateEventTime,
   updateOccurrence,
   updateSeries,
+  updateTask,
 } from "@/lib/data";
 import { buildRRule, describeRRule, parseRRule } from "@/lib/recurrence";
 import { detectMeetingLink } from "@/lib/meeting";
 import { parseNL } from "@/lib/nlschedule";
-import type { CalInstance, Calendar as Cal, EditScope, EventStatus, Recurrence, RecurFreq, ScheduleRecurring } from "@/lib/types";
+import type { CalInstance, Calendar as Cal, EditScope, EventStatus, Recurrence, RecurFreq, ScheduleRecurring, Task } from "@/lib/types";
+import TasksPanel from "./TasksPanel";
 import s from "./Calendar.module.css";
 import "./calendar-theme.css";
 
@@ -59,6 +65,7 @@ type FormState = {
   recurEndMode: "never" | "until" | "count";
   recurUntil: string; // yyyy-mm-dd
   recurCount: number;
+  linkTaskId?: string; // 从任务停车场"安排"过来 → 存事件后回写 Task.scheduled_event_id
 };
 
 type ScopeAsk = {
@@ -175,6 +182,7 @@ export default function CalendarBoard() {
     meeting: string | null;
   } | null>(null);
   const [nlText, setNlText] = useState("");
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   const layersRef = useRef(layers);
   layersRef.current = layers;
@@ -301,11 +309,16 @@ export default function CalendarBoard() {
     let alive = true;
     (async () => {
       await ensureDefaultCalendars(session.user.id);
-      const [cals, course] = await Promise.all([getMyCalendars(session.user.id), getScheduleAsRecurring()]);
+      const [cals, course, taskList] = await Promise.all([
+        getMyCalendars(session.user.id),
+        getScheduleAsRecurring(),
+        getTasks(session.user.id),
+      ]);
       if (!alive || !elRef.current) return;
       calsRef.current = Object.fromEntries(cals.map((c) => [c.id, c]));
       courseRef.current = course;
       setCalList(cals);
+      setTasks(taskList);
 
       const cal = new Calendar(elRef.current, {
         plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin, multiMonthPlugin],
@@ -436,6 +449,43 @@ export default function CalendarBoard() {
       recurCount: rec?.count ?? 10,
     });
     setNlText("");
+  }
+
+  async function refreshTasks() {
+    if (session) setTasks(await getTasks(session.user.id));
+  }
+  async function addTask(title: string, dueAt: string | null) {
+    if (!session) return;
+    await createTask({ title, dueAt }, session.user.id);
+    refreshTasks();
+  }
+  async function toggleTask(t: Task) {
+    await updateTask(t.id, { status: t.status === "done" ? "todo" : "done" });
+    refreshTasks();
+  }
+  async function deleteTask(t: Task) {
+    await softDeleteTask(t.id);
+    refreshTasks();
+  }
+  // 任务"安排"→ 预填创建表单（时间块），存事件后回写 link
+  function scheduleTaskToForm(t: Task) {
+    const start = new Date();
+    start.setMinutes(0, 0, 0);
+    start.setHours(start.getHours() + 1);
+    const base = t.dueAt ? new Date(t.dueAt) : start;
+    setForm({
+      mode: "create",
+      title: t.title,
+      start: toLocalInput(base),
+      end: toLocalInput(new Date(base.getTime() + 60 * 60 * 1000)),
+      kind: "timeblock",
+      calendarId: defaultCalId(),
+      location: "",
+      status: "confirmed",
+      allDay: false,
+      linkTaskId: t.id,
+      ...EMPTY_RECUR,
+    });
   }
 
   function openEdit(ev: { id: string; title: string; start: Date | null; end: Date | null; allDay?: boolean; extendedProps: Record<string, unknown> }) {
@@ -615,9 +665,16 @@ export default function CalendarBoard() {
         showToast(res.error, null);
         return;
       }
+      if (form.linkTaskId) {
+        await scheduleTask(form.linkTaskId, res.id);
+        refreshTasks();
+      }
       setForm(null);
       await fetchAndRebuild();
-      showToast(recurrence ? "已新建重复日程" : overlaps(startISO, endISO) ? "已新建 · 与其它日程重叠" : "已新建", null);
+      showToast(
+        form.linkTaskId ? "已安排到日历" : recurrence ? "已新建重复日程" : overlaps(startISO, endISO) ? "已新建 · 与其它日程重叠" : "已新建",
+        null,
+      );
       return;
     }
 
@@ -810,6 +867,8 @@ export default function CalendarBoard() {
           建
         </button>
       </div>
+
+      <TasksPanel tasks={tasks} onAdd={addTask} onToggle={toggleTask} onDelete={deleteTask} onSchedule={scheduleTaskToForm} />
 
       <div ref={elRef} className={s.cal} />
 

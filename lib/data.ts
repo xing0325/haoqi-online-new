@@ -21,6 +21,8 @@ import type {
   ScheduleEntry,
   ScheduleRecurring,
   ScoreSummary,
+  Task,
+  TaskStatus,
   UserLite,
   WeekSlot,
 } from "./types";
@@ -752,6 +754,68 @@ export async function deleteSeries(masterId: string): Promise<{ ok: true } | { e
   const e1 = await supabase().from("Event").update({ deleted_at: now }).eq("id", masterId);
   const e2 = await supabase().from("Event").update({ deleted_at: now }).eq("series_id", masterId);
   return e1.error || e2.error ? { error: "删除失败" } : { ok: true };
+}
+
+// ---- 个人任务（停车场，切片 1.9）。能力 API，UI 与未来 Agent 共用 ----
+
+const TASK_COLS = "id, title, notes, due_at, status, scheduled_event_id, created_at";
+function toTask(t: any): Task {
+  return {
+    id: t.id,
+    title: t.title,
+    notes: t.notes ?? null,
+    dueAt: t.due_at ?? null,
+    status: t.status,
+    scheduledEventId: t.scheduled_event_id ?? null,
+    createdAt: t.created_at,
+  };
+}
+
+export async function getTasks(userId: string): Promise<Task[]> {
+  const { data } = await supabase()
+    .from("Task")
+    .select(TASK_COLS)
+    .eq("owner_id", userId)
+    .is("deleted_at", null)
+    .order("created_at");
+  return (data ?? []).map(toTask);
+}
+
+export async function createTask(
+  input: { title: string; dueAt?: string | null; notes?: string | null },
+  userId: string,
+): Promise<Task | { error: string }> {
+  const { data, error } = await supabase()
+    .from("Task")
+    .insert({ owner_id: userId, title: input.title, due_at: input.dueAt ?? null, notes: input.notes ?? null })
+    .select(TASK_COLS)
+    .single();
+  if (error) return { error: error.code === "42501" ? "没权限。" : "新建任务失败" };
+  return toTask(data);
+}
+
+export async function updateTask(
+  id: string,
+  patch: { title?: string; status?: TaskStatus; dueAt?: string | null; notes?: string | null; scheduledEventId?: string | null },
+): Promise<{ ok: true } | { error: string }> {
+  const row: Record<string, unknown> = {};
+  if (patch.title !== undefined) row.title = patch.title;
+  if (patch.status !== undefined) row.status = patch.status;
+  if (patch.dueAt !== undefined) row.due_at = patch.dueAt;
+  if (patch.notes !== undefined) row.notes = patch.notes;
+  if (patch.scheduledEventId !== undefined) row.scheduled_event_id = patch.scheduledEventId;
+  const { error } = await supabase().from("Task").update(row).eq("id", id);
+  return error ? { error: "保存失败" } : { ok: true };
+}
+
+// 把任务挂到已建的日历事件（停车场拖/点入日历后回写）。
+export async function scheduleTask(taskId: string, eventId: string): Promise<{ ok: true } | { error: string }> {
+  return updateTask(taskId, { scheduledEventId: eventId });
+}
+
+export async function softDeleteTask(id: string): Promise<{ ok: true } | { error: string }> {
+  const { error } = await supabase().from("Task").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  return error ? { error: "删除失败" } : { ok: true };
 }
 
 // 课表（只读层）→ FullCalendar 重复事件输入。
