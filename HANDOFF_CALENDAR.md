@@ -13,7 +13,14 @@
 - **视图（照搬 TickTick，纸感马卡龙）**：年(个人忙碌度**热力**) / 月(chips + `+N`) / 周 / 日 / 日程(list，**圆圈勾选→done**)，**底部药丸**切换；重复实例带 `↻`；小天气云装饰。视觉素材参考 `C:\chichu的平面设计\滴答清单日历视图学习\`。
 - **验证**：`lib/recurrence.test.ts` 20 单测；`scripts/recurring-smoke.mjs` 真库 **10/10**（schema/约束/触发器/RLS 负样本）；build 过；浏览器五视图 + 重复展开 + 热力均实测。
 - **v1 已知简化**（见 spec §10）：到点**提醒通知不做**（缺推送通道，留 Agent/通知切片）；年热力**只算本人**（社区脉搏留后）；系列编辑/拆分**撤销弱化**；`splitSeries` 丢弃旧系列未来的 override；双周/多日视图**可选**未做。
-- **下一步建议**：见下方第 7 节，重复事件已完成 → 接 **任务流** 或 **协作** 或 **Agent 子系统**（能力 API 已给 Agent 留好）。
+### 同夜追加：切片 1.6（富事件 lite）+ 1.7（状态）也已上线
+- **1.6 富事件 lite**（spec `docs/specs/2026-06-23-calendar-rich-events-lite-design.md`）：
+  - **会议链接识别** `lib/meeting.ts`（腾讯/飞书/Zoom/Google Meet/钉钉，精确不误判文档链接，7 单测）→ 事件 location/title 命中给「进入会议」按钮。
+  - **悬停快速预览**卡（标题/时间/地点/会议）。
+  - **活动详情页 `/event?id=`**（`app/event/page.tsx` + `components/calendar/EventDetail.tsx`；重复传 `&occ=`）：时间/重复描述/地点/日历/进入会议 + 附件·关联做事课「建设中」诚实占位；编辑表单加「详情 ↗」。
+- **1.7 状态**：编辑/新建表单加**状态选择**（草稿/已确认/已完成，补齐之前只能在 list 勾 done 的缺口）；**进行中呼吸动效** `.fc-live`（now∈[start,end] 且已确认，纯客户端无迁移）。
+- 三切片共 **28 vitest 绿**；浏览器逐项实测（五视图/重复展开/热力/详情页/会议按钮/悬停/编辑表单）。`scripts/seed-recur-demo.mjs` 给 chichu 留了「每周·团队站会」demo（含腾讯会议链接，可删）。
+- **下一步建议**（见第 7 节）：重复+视图+富事件 lite 已完成。**没动**的大块：①任务流（停车场/deadline/滚明天/shutdown，拖拽重，需新 Task 实体）②协作（公开分享/发帖/指派/Openings/Proposals）③完整生命周期状态流（想法→报名中→已复盘，需配报名系统）④Agent 子系统（**架构未决**：静态站跑 DeepSeek 要加后端代理，破"纯静态"锁，**留负责人拍板**）⑤社区脉搏跨用户聚合。能力 API（`lib/data.ts`）已给 Agent 留好。
 
 ---
 
