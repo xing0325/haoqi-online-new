@@ -73,6 +73,19 @@
 .fc-event.fc-draft {
   border-style: dashed !important;
 }
+/* 进行中：轻微呼吸（当前正在发生的已确认事件） */
+@keyframes fc-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(238, 114, 92, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(238, 114, 92, 0.32);
+  }
+}
+.fc-event.fc-live {
+  animation: fc-breathe 2.4s ease-in-out infinite;
+}
 .fc .fc-highlight {
   background: rgba(201, 222, 253, 0.4);
 }

@@ -462,6 +462,7 @@ export async function createEvent(
     allDay?: boolean;
     kind?: EventKind;
     location?: string | null;
+    status?: EventStatus;
     recurrence?: Recurrence | null;
   },
   userId: string,
@@ -476,6 +477,7 @@ export async function createEvent(
     location: input.location ?? null,
     created_by: userId,
   };
+  if (input.status) row.status = input.status;
   if (input.recurrence) {
     row.rrule = buildRRule(input.recurrence, input.startsAt);
     row.recur_until = computeRecurUntil(input.recurrence, input.startsAt);

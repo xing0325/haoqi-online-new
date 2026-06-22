@@ -29,7 +29,7 @@ import {
 } from "@/lib/data";
 import { buildRRule, describeRRule, parseRRule } from "@/lib/recurrence";
 import { detectMeetingLink } from "@/lib/meeting";
-import type { CalInstance, Calendar as Cal, EditScope, Recurrence, RecurFreq, ScheduleRecurring } from "@/lib/types";
+import type { CalInstance, Calendar as Cal, EditScope, EventStatus, Recurrence, RecurFreq, ScheduleRecurring } from "@/lib/types";
 import s from "./Calendar.module.css";
 import "./calendar-theme.css";
 
@@ -50,6 +50,7 @@ type FormState = {
   kind: "event" | "timeblock";
   calendarId: string;
   location: string;
+  status: EventStatus;
   // 重复（精简档）
   recurFreq: RecurField;
   recurWeekdays: number[]; // 0=周一..6=周日
@@ -252,6 +253,8 @@ export default function CalendarBoard() {
       if (e.status === "done") cls.push("fc-done");
       if (e.status === "draft") cls.push("fc-draft");
       if (e.isRecurring) cls.push("fc-recur");
+      if (e.status === "confirmed" && new Date(e.startsAt).getTime() <= now && new Date(e.endsAt).getTime() > now)
+        cls.push("fc-live");
       cal.addEvent({
         id: e.instanceId,
         title: e.title,
@@ -399,6 +402,7 @@ export default function CalendarBoard() {
       kind: "event",
       calendarId: defaultCalId(),
       location: "",
+      status: "confirmed",
       ...EMPTY_RECUR,
     });
   }
@@ -432,6 +436,7 @@ export default function CalendarBoard() {
       kind: (ep.kind as "event" | "timeblock") ?? "event",
       calendarId: (ep.calendarId as string) ?? defaultCalId(),
       location: (ep.location as string) ?? "",
+      status: (ep.status as EventStatus) ?? "confirmed",
       ...recur,
     });
   }
@@ -568,6 +573,7 @@ export default function CalendarBoard() {
           endsAt: endISO,
           kind: form.kind,
           location: form.location || null,
+          status: form.status,
           recurrence,
         },
         uid,
@@ -591,6 +597,7 @@ export default function CalendarBoard() {
           endsAt: endISO,
           kind: form.kind,
           location: form.location || null,
+          status: form.status,
           recurrence,
         });
       } else {
@@ -600,6 +607,7 @@ export default function CalendarBoard() {
           endsAt: endISO,
           kind: form.kind,
           location: form.location || null,
+          status: form.status,
         });
       }
       setForm(null);
@@ -614,12 +622,13 @@ export default function CalendarBoard() {
     const title = form.title.trim();
     const kind = form.kind;
     const location = form.location || null;
+    const status = form.status;
     setScopeAsk({
       mode: "edit",
       onCancel: () => {},
       run: async (scope) => {
         if (scope === "this") {
-          await updateOccurrence(masterId, occ, { calendarId, title, startsAt: startISO, endsAt: endISO, kind, location }, uid);
+          await updateOccurrence(masterId, occ, { calendarId, title, startsAt: startISO, endsAt: endISO, kind, location, status }, uid);
         } else if (scope === "thisAndFuture") {
           await splitSeries(
             masterId,
@@ -640,6 +649,7 @@ export default function CalendarBoard() {
               endsAt: newEnd,
               kind,
               location,
+              status,
               recurrence: recurrence ?? reanchor(master.rrule, newStart),
             });
           }
@@ -862,6 +872,14 @@ export default function CalendarBoard() {
                 </select>
               </label>
             </div>
+            <label className={s.field}>
+              状态
+              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as EventStatus })}>
+                <option value="confirmed">已确认</option>
+                <option value="draft">草稿</option>
+                <option value="done">已完成</option>
+              </select>
+            </label>
             <label className={s.field}>
               地点
               <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="可空（贴会议链接会自动识别）" />
