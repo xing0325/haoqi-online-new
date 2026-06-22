@@ -198,6 +198,21 @@ export default function CalendarBoard() {
           });
           cal.unselect();
         },
+        dateClick: (info) => {
+          const personal = calList.find((c) => c.kind === "personal") ?? cals.find((c) => c.kind === "personal");
+          const base = new Date(info.date);
+          if (info.allDay) base.setHours(9, 0, 0, 0);
+          const end = new Date(base.getTime() + 60 * 60 * 1000);
+          setForm({
+            mode: "create",
+            title: "",
+            start: toLocalInput(base),
+            end: toLocalInput(end),
+            kind: "event",
+            calendarId: personal?.id ?? cals[0]?.id ?? "",
+            location: "",
+          });
+        },
         eventClick: (info) => {
           const ep = info.event.extendedProps as Record<string, unknown>;
           if (ep.isCourse) {
