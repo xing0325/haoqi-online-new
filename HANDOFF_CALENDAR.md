@@ -1,7 +1,19 @@
 # 好奇 Online · 日历模块 — 给下一个 Claude 的交接书
 
 > 你接手「好奇 Online」的**日历模块**。先完整读完本文件再动手。
-> 这不是从零开始：登录、首页、课程空间、日历切片 1 都已上线并接了真数据。你的任务是**继续把日历愿景一切片一切片做下去**。
+> 这不是从零开始：登录、首页、课程空间、日历切片 1 + 1.5 都已上线并接了真数据。你的任务是**继续把日历愿景一切片一切片做下去**。
+
+---
+
+## 更新 2026-06-23：切片 1.5 已上线（重复事件 + 滴答清单全套视图）
+
+- **spec**：`docs/specs/2026-06-23-calendar-recurring-views-design.md`；**plan**：`docs/plans/2026-06-23-calendar-recurring-views.md`。
+- **北极星（负责人定）**：**底层能力做满（给未来 DeepSeek Agent 用自然语言驱动），人类 UI 做精简。** 重复/例外能力收敛成 `lib/data.ts` 的「能力 API」，精简 UI 与 Agent 共用。
+- **重复事件**：`Event` 加 `rrule / recur_until / series_id / occurrence_start`（迁移 `20260623120000`，已套云库）。母事件存 RRULE；改一次=override 子行、删一次=cancelled 子行（recurrence-id 范式）。客户端 `lib/recurrence.ts`（`rrule.js` 自展开，**不用** FC rrule 插件）按视图窗展开 + 套例外。能力 API：`getEventsForWindow / createEvent(recurrence) / updateSeries / updateOccurrence / cancelOccurrence / splitSeries / truncateSeries / deleteSeries`。改/删重复弹「作用范围：仅此次 / 此次及以后 / 整个系列」。
+- **视图（照搬 TickTick，纸感马卡龙）**：年(个人忙碌度**热力**) / 月(chips + `+N`) / 周 / 日 / 日程(list，**圆圈勾选→done**)，**底部药丸**切换；重复实例带 `↻`；小天气云装饰。视觉素材参考 `C:\chichu的平面设计\滴答清单日历视图学习\`。
+- **验证**：`lib/recurrence.test.ts` 20 单测；`scripts/recurring-smoke.mjs` 真库 **10/10**（schema/约束/触发器/RLS 负样本）；build 过；浏览器五视图 + 重复展开 + 热力均实测。
+- **v1 已知简化**（见 spec §10）：到点**提醒通知不做**（缺推送通道，留 Agent/通知切片）；年热力**只算本人**（社区脉搏留后）；系列编辑/拆分**撤销弱化**；`splitSeries` 丢弃旧系列未来的 override；双周/多日视图**可选**未做。
+- **下一步建议**：见下方第 7 节，重复事件已完成 → 接 **任务流** 或 **协作** 或 **Agent 子系统**（能力 API 已给 Agent 留好）。
 
 ---
 

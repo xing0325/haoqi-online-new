@@ -22,3 +22,11 @@
 - **自展开**（rrule.js），不用 FC rrule 插件（单实例拖拽可控）。
 - 例外用**子行**（recurrence-id 范式）。
 - v1 简化：提醒通知不做、年热力仅本人、系列撤销弱化、拆分丢未来 override、双周/多日可选。
+
+## ✅ 完成（2026-06-23）
+全部 11 步做完并**已上线**：https://xing0325.github.io/haoqi-online-new/
+- 迁移已套云库；`lib/recurrence.ts` 20 单测绿；`recurring-smoke.mjs` 真库 **10/10**（schema/约束/触发器/RLS 负样本）。
+- `npm run build` 静态导出过；`npm test` 21/21。
+- 浏览器实测（dev 3216，登录 chichu）：五视图均渲染；灌的「每周·团队站会」demo 在周视图 1 次、月视图 6 次、均带 `↻`；年视图热力 33 格、0 冗余事件节点。
+- 已 commit `070625e`，feat→main ff，push，CI `27975686840` 成功部署。
+- 残留小事（不挡）：年视图大量重复源仍会在内存展开（已不铺 DOM）；form 的建/改/删走 FC 交互未用脚本点测（纯 React + 已 smoke 的能力 API，低风险）。`scripts/seed-recur-demo.mjs` 给 chichu 留了一条可删的 demo 重复事件。
