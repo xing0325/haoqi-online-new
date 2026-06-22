@@ -4,13 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import s from "./Courses.module.css";
-import { getCourse, getCoursePosts } from "@/lib/data";
+import { getCourse, getCoursePosts, getCourseRole } from "@/lib/data";
+import { useAuth } from "@/components/auth/AuthProvider";
 import type { Course, PostListItem } from "@/lib/types";
 
 export default function CourseHome() {
   const id = useSearchParams().get("id") ?? "";
+  const { session, profile } = useAuth();
   const [course, setCourse] = useState<Course | null>(null);
   const [posts, setPosts] = useState<PostListItem[]>([]);
+  const [canPost, setCanPost] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -19,23 +22,26 @@ export default function CourseHome() {
       setNotFound(true);
       return;
     }
-    Promise.all([getCourse(id), getCoursePosts(id)])
-      .then(([c, p]) => {
-        if (!active) return;
-        if (!c) {
-          setNotFound(true);
-          return;
-        }
-        setCourse(c);
-        setPosts(p);
-      })
-      .catch(() => {
-        if (active) setNotFound(true);
-      });
+    (async () => {
+      const [c, p] = await Promise.all([getCourse(id), getCoursePosts(id)]);
+      if (!active) return;
+      if (!c) {
+        setNotFound(true);
+        return;
+      }
+      setCourse(c);
+      setPosts(p);
+      if (session) {
+        const role = await getCourseRole(id, session.user.id);
+        if (active) setCanPost(profile?.role === "admin" || role === "teacher" || role === "assistant");
+      }
+    })().catch(() => {
+      if (active) setNotFound(true);
+    });
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id, session, profile]);
 
   return (
     <section className={s.view}>
@@ -60,7 +66,15 @@ export default function CourseHome() {
             </div>
           </div>
 
-          <p className={s.sectionLabel}>课程动态 · {posts.length} 条</p>
+          <div className={s.listHead}>
+            <p className={s.sectionLabel}>课程动态 · {posts.length} 条</p>
+            {canPost && (
+              <Link href={`/compose?course=${course.id}`} className={s.composeEntryBtn}>
+                ＋ 发布动态
+              </Link>
+            )}
+          </div>
+
           <div className={s.feed}>
             {posts.map((p) => (
               <Link key={p.id} href={`/post?id=${p.id}`} className={s.postCard}>
@@ -76,6 +90,7 @@ export default function CourseHome() {
                 </div>
               </Link>
             ))}
+            {posts.length === 0 && <p className={s.state}>这门课还没有动态。</p>}
           </div>
         </>
       )}

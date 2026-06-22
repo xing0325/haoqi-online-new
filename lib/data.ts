@@ -227,6 +227,41 @@ export async function getComments(postId: string): Promise<CommentItem[]> {
   }));
 }
 
+// 当前用户在某课的成员角色（用于判断能否发帖）。
+export async function getCourseRole(courseId: string, userId: string): Promise<string | null> {
+  const { data } = await supabase()
+    .from("CourseMembership")
+    .select("role")
+    .eq("course_id", courseId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  return (data as { role?: string } | null)?.role ?? null;
+}
+
+// 发帖（RLS 兜权限：author_id=auth.uid() 且 can_post_course）。
+export async function createPost(
+  courseId: string,
+  userId: string,
+  title: string,
+  body: string,
+  publish: boolean,
+): Promise<{ id: string } | { error: string }> {
+  const { data, error } = await supabase()
+    .from("Post")
+    .insert({
+      space_type: "course",
+      space_id: courseId,
+      title,
+      body_markdown: body,
+      author_id: userId,
+      status: publish ? "published" : "draft",
+    })
+    .select("id")
+    .single();
+  if (error) return { error: error.code === "42501" ? "你没有在这门课发帖的权限。" : "发布失败，再试一次。" };
+  return { id: (data as { id: string }).id };
+}
+
 // ---- 诚实占位（对应模块尚未建：大家在干嘛 / 信用积分 / 阅读联赛）----
 
 export async function getPulse(): Promise<PulseItem[]> {

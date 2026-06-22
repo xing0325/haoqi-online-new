@@ -369,6 +369,90 @@
   font-size: 12px;
 }
 
+/* ---- 发帖入口 + 编辑器 ---- */
+.listHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.listHead .sectionLabel {
+  margin: 0;
+}
+.composeEntryBtn {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 3px 0 rgba(20, 31, 50, 0.13);
+}
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 680px;
+}
+.titleInput {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.bodyInput {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--white);
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink);
+  resize: vertical;
+  font-family: inherit;
+}
+.titleInput:focus,
+.bodyInput:focus {
+  outline: 2px solid var(--blue);
+  border-color: transparent;
+}
+.composerActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.cancelBtn {
+  padding: 11px 16px;
+  border-radius: 10px;
+  color: #768297;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.publishBtn {
+  padding: 11px 20px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ink);
+  color: white;
+  font-size: 13px;
+  font-weight: 750;
+  box-shadow: 0 3px 0 rgba(20, 31, 50, 0.13);
+  cursor: pointer;
+}
+.publishBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 /* ---- 状态 ---- */
 .state {
   padding: 70px 20px;

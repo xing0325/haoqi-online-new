@@ -16,7 +16,12 @@ export const NAV_ITEMS: NavItem[] = [
 export function isActive(href: string, pathname: string): boolean {
   if (href === "/") return pathname === "/";
   if (href === "/courses") {
-    return pathname === "/courses" || pathname === "/course" || pathname === "/post";
+    return (
+      pathname === "/courses" ||
+      pathname === "/course" ||
+      pathname === "/post" ||
+      pathname === "/compose"
+    );
   }
   return pathname.startsWith(href);
 }
