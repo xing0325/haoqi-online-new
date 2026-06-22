@@ -14,6 +14,7 @@ import type {
   ScheduleEntry,
   ScoreSummary,
   UserLite,
+  WeekSlot,
 } from "./types";
 
 export const IS_MOCK = false;
@@ -148,6 +149,53 @@ export async function getTodaySchedule(): Promise<ScheduleEntry[]> {
       state: slotState(String(s.starts_at), String(s.ends_at), s.slot_kind),
     };
   });
+}
+
+export async function getWeekSchedule(): Promise<{ slots: WeekSlot[]; weekdayToday: number }> {
+  const weekdayToday = ((new Date().getDay() + 6) % 7) + 1;
+  const { data: term } = await supabase().from("Term").select("id").eq("is_active", true).maybeSingle();
+  if (!term) return { slots: [], weekdayToday };
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: rows } = await supabase()
+    .from("ScheduleSlot")
+    .select("id, weekday, starts_at, ends_at, slot_kind, course_id")
+    .eq("term_id", (term as { id: string }).id)
+    .order("weekday")
+    .order("starts_at");
+  if (!rows || rows.length === 0) return { slots: [], weekdayToday };
+  const courseMap = await courseMapByIds([...new Set((rows as any[]).map((r) => r.course_id).filter(Boolean))]);
+  const { data: changes } = await supabase()
+    .from("ScheduleChange")
+    .select("slot_id, change_type, new_location")
+    .eq("occurs_on", today)
+    .is("deleted_at", null)
+    .in("slot_id", (rows as any[]).map((r) => r.id));
+  const changeBySlot: Record<string, any> = {};
+  for (const ch of (changes ?? []) as any[]) changeBySlot[ch.slot_id] = ch;
+
+  const slots: WeekSlot[] = (rows as any[]).map((r) => {
+    const course = r.course_id ? courseMap[r.course_id] : undefined;
+    const ch = changeBySlot[r.id];
+    return {
+      slotId: r.id,
+      weekday: r.weekday,
+      startsAt: String(r.starts_at).slice(0, 5),
+      endsAt: String(r.ends_at).slice(0, 5),
+      title: course ? course.name : slotKindTitle(r.slot_kind),
+      slotKind: r.slot_kind,
+      courseId: r.course_id ?? null,
+      avatarColor: course ? course.avatarColor : null,
+      hasChangeToday: !!ch,
+      changeNote: ch
+        ? ch.change_type === "cancelled"
+          ? "已取消"
+          : ch.new_location
+            ? `→ ${ch.new_location}`
+            : "有变化"
+        : null,
+    };
+  });
+  return { slots, weekdayToday };
 }
 
 export async function getCourseFeed(): Promise<FeedPost[]> {

@@ -95,3 +95,17 @@ export type CommentItem = {
   body: string;
   timeLabel: string;
 };
+
+/** 官方周课表里的一个时段（只读公共事实）。 */
+export type WeekSlot = {
+  slotId: string;
+  weekday: number; // 1=周一 .. 7=周日
+  startsAt: string;
+  endsAt: string;
+  title: string;
+  slotKind: SlotKind;
+  courseId: string | null;
+  avatarColor: AvatarColor | null;
+  hasChangeToday: boolean;
+  changeNote: string | null;
+};
