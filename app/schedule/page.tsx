@@ -1,5 +1,5 @@
-import WeekSchedule from "@/components/schedule/WeekSchedule";
+import CalendarBoard from "@/components/calendar/CalendarBoard";
 
 export default function SchedulePage() {
-  return <WeekSchedule />;
+  return <CalendarBoard />;
 }

@@ -3,6 +3,8 @@
 import { supabase } from "./supabase/browser";
 import type {
   AvatarColor,
+  CalEvent,
+  Calendar,
   CommentItem,
   Course,
   CourseListItem,
@@ -12,6 +14,7 @@ import type {
   PulseItem,
   ReadingSummary,
   ScheduleEntry,
+  ScheduleRecurring,
   ScoreSummary,
   UserLite,
   WeekSlot,
@@ -308,6 +311,180 @@ export async function createPost(
     .single();
   if (error) return { error: error.code === "42501" ? "你没有在这门课发帖的权限。" : "发布失败，再试一次。" };
   return { id: (data as { id: string }).id };
+}
+
+// ---- 日历：Calendar / Event / 课表转重复事件 ----
+
+const CAL_COLOR = { personal: "#5b9be0", work: "#ef785e" };
+const COURSE_HEX: Record<string, string> = {
+  yellow: "#e6c000",
+  coral: "#ef785e",
+  blue: "#5b9be0",
+  mint: "#4cb88a",
+  pink: "#ef8aa0",
+};
+
+function toCalEvent(e: any): CalEvent {
+  return {
+    id: e.id,
+    calendarId: e.calendar_id,
+    title: e.title,
+    startsAt: e.starts_at,
+    endsAt: e.ends_at,
+    allDay: e.all_day,
+    kind: e.kind,
+    status: e.status,
+    location: e.location ?? null,
+  };
+}
+
+export async function getCalendars(): Promise<Calendar[]> {
+  const { data } = await supabase()
+    .from("Calendar")
+    .select("id, name, kind, color, visibility")
+    .order("created_at");
+  return (data ?? []).map((c: any) => ({
+    id: c.id,
+    name: c.name,
+    kind: c.kind,
+    color: c.color,
+    visibility: c.visibility,
+  }));
+}
+
+export async function getMyCalendars(userId: string): Promise<Calendar[]> {
+  const { data } = await supabase()
+    .from("Calendar")
+    .select("id, name, kind, color, visibility")
+    .eq("owner_id", userId)
+    .order("created_at");
+  return (data ?? []).map((c: any) => ({
+    id: c.id,
+    name: c.name,
+    kind: c.kind,
+    color: c.color,
+    visibility: c.visibility,
+  }));
+}
+
+// 首次进日历页：本人没有「私人」/「工作」日历就各建一本。
+export async function ensureDefaultCalendars(userId: string): Promise<void> {
+  const { data } = await supabase().from("Calendar").select("kind").eq("owner_id", userId);
+  const kinds = new Set((data ?? []).map((c: any) => c.kind));
+  const toCreate: any[] = [];
+  if (!kinds.has("personal"))
+    toCreate.push({ owner_id: userId, name: "私人", kind: "personal", color: CAL_COLOR.personal });
+  if (!kinds.has("work"))
+    toCreate.push({ owner_id: userId, name: "工作", kind: "work", color: CAL_COLOR.work });
+  if (toCreate.length) await supabase().from("Calendar").insert(toCreate);
+}
+
+// 与 [fromISO, toISO] 时间窗有交集的事件（event.starts_at < to 且 event.ends_at > from）。
+export async function getEventsInRange(
+  calendarIds: string[],
+  fromISO: string,
+  toISO: string,
+): Promise<CalEvent[]> {
+  if (calendarIds.length === 0) return [];
+  const { data } = await supabase()
+    .from("Event")
+    .select("id, calendar_id, title, starts_at, ends_at, all_day, kind, status, location")
+    .in("calendar_id", calendarIds)
+    .is("deleted_at", null)
+    .lt("starts_at", toISO)
+    .gt("ends_at", fromISO)
+    .order("starts_at");
+  return (data ?? []).map(toCalEvent);
+}
+
+export async function createEvent(
+  input: {
+    calendarId: string;
+    title: string;
+    startsAt: string;
+    endsAt: string;
+    allDay?: boolean;
+    kind?: "event" | "timeblock";
+    location?: string | null;
+  },
+  userId: string,
+): Promise<CalEvent | { error: string }> {
+  const { data, error } = await supabase()
+    .from("Event")
+    .insert({
+      calendar_id: input.calendarId,
+      title: input.title,
+      starts_at: input.startsAt,
+      ends_at: input.endsAt,
+      all_day: input.allDay ?? false,
+      kind: input.kind ?? "event",
+      location: input.location ?? null,
+      created_by: userId,
+    })
+    .select("id, calendar_id, title, starts_at, ends_at, all_day, kind, status, location")
+    .single();
+  if (error) return { error: error.code === "42501" ? "没权限往这个日历写。" : "新建失败，再试一次。" };
+  return toCalEvent(data);
+}
+
+export async function updateEventTime(
+  id: string,
+  startsAt: string,
+  endsAt: string,
+): Promise<{ ok: true } | { error: string }> {
+  const { error } = await supabase().from("Event").update({ starts_at: startsAt, ends_at: endsAt }).eq("id", id);
+  return error ? { error: "保存失败" } : { ok: true };
+}
+
+export async function updateEvent(
+  id: string,
+  patch: {
+    title?: string;
+    startsAt?: string;
+    endsAt?: string;
+    kind?: "event" | "timeblock";
+    status?: "draft" | "confirmed" | "done" | "cancelled";
+    location?: string | null;
+  },
+): Promise<{ ok: true } | { error: string }> {
+  const row: any = {};
+  if (patch.title !== undefined) row.title = patch.title;
+  if (patch.startsAt !== undefined) row.starts_at = patch.startsAt;
+  if (patch.endsAt !== undefined) row.ends_at = patch.endsAt;
+  if (patch.kind !== undefined) row.kind = patch.kind;
+  if (patch.status !== undefined) row.status = patch.status;
+  if (patch.location !== undefined) row.location = patch.location;
+  const { error } = await supabase().from("Event").update(row).eq("id", id);
+  return error ? { error: "保存失败" } : { ok: true };
+}
+
+export async function softDeleteEvent(id: string): Promise<{ ok: true } | { error: string }> {
+  const { error } = await supabase().from("Event").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+  return error ? { error: "删除失败" } : { ok: true };
+}
+
+// 课表（只读层）→ FullCalendar 重复事件输入。
+export async function getScheduleAsRecurring(): Promise<ScheduleRecurring[]> {
+  const { data: term } = await supabase().from("Term").select("id").eq("is_active", true).maybeSingle();
+  if (!term) return [];
+  const { data: rows } = await supabase()
+    .from("ScheduleSlot")
+    .select("weekday, starts_at, ends_at, slot_kind, course_id")
+    .eq("term_id", (term as { id: string }).id);
+  const courseMap = await courseMapByIds([
+    ...new Set((rows ?? []).map((r: any) => r.course_id).filter(Boolean)),
+  ]);
+  return (rows ?? []).map((r: any) => {
+    const course = r.course_id ? courseMap[r.course_id] : undefined;
+    return {
+      title: course ? course.name : slotKindTitle(r.slot_kind),
+      daysOfWeek: [r.weekday === 7 ? 0 : r.weekday],
+      startTime: String(r.starts_at).slice(0, 5),
+      endTime: String(r.ends_at).slice(0, 5),
+      color: course ? COURSE_HEX[course.avatarColor] : "#aeb6c2",
+      courseId: r.course_id ?? null,
+    };
+  });
 }
 
 // ---- 诚实占位（对应模块尚未建：大家在干嘛 / 信用积分 / 阅读联赛）----

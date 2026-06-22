@@ -1,0 +1,81 @@
+.fc {
+  --fc-border-color: #ece9e0;
+  --fc-page-bg-color: #fffefa;
+  --fc-neutral-bg-color: #f6f5f0;
+  --fc-today-bg-color: rgba(253, 243, 239, 0.55);
+  --fc-now-indicator-color: #ee725c;
+  font-family: "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+  font-size: 13px;
+}
+.fc .fc-toolbar-title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #18243b;
+}
+.fc .fc-button {
+  background: #fff;
+  border: 1px solid #e8e6de;
+  color: #5f6d81;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: none;
+  box-shadow: none;
+  padding: 6px 11px;
+}
+.fc .fc-button:hover {
+  background: #f1efe9;
+  color: #18243b;
+}
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+  background: #18243b;
+  border-color: #18243b;
+  color: #fff;
+}
+.fc .fc-button-primary:disabled {
+  opacity: 0.5;
+}
+.fc .fc-col-header-cell-cushion,
+.fc .fc-timegrid-axis-cushion,
+.fc .fc-timegrid-slot-label-cushion,
+.fc .fc-daygrid-day-number {
+  color: #8490a2;
+  font-weight: 700;
+  font-size: 11px;
+  text-decoration: none;
+}
+.fc .fc-daygrid-day-number {
+  color: #5f6d81;
+  font-size: 12px;
+}
+.fc-event {
+  border-radius: 5px;
+  border-left-width: 3px;
+  font-size: 12px;
+}
+.fc-timegrid-event .fc-event-main {
+  padding: 2px 6px;
+}
+.fc-daygrid-event {
+  padding: 1px 4px;
+}
+.fc-event.fc-course {
+  cursor: pointer;
+}
+.fc-event.fc-tb {
+  opacity: 0.6;
+}
+.fc-event.fc-done {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+.fc-event.fc-draft {
+  border-style: dashed !important;
+}
+.fc .fc-highlight {
+  background: rgba(201, 222, 253, 0.4);
+}
+.fc .fc-timegrid-now-indicator-arrow {
+  border-color: #ee725c;
+}

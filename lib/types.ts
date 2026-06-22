@@ -109,3 +109,32 @@ export type WeekSlot = {
   hasChangeToday: boolean;
   changeNote: string | null;
 };
+
+export type CalKind = "personal" | "work";
+export type Calendar = {
+  id: string;
+  name: string;
+  kind: CalKind;
+  color: string | null;
+  visibility: "private" | "public";
+};
+export type CalEvent = {
+  id: string;
+  calendarId: string;
+  title: string;
+  startsAt: string;
+  endsAt: string;
+  allDay: boolean;
+  kind: "event" | "timeblock";
+  status: "draft" | "confirmed" | "done" | "cancelled";
+  location: string | null;
+};
+/** 课表 slot 转成 FullCalendar 重复事件输入。 */
+export type ScheduleRecurring = {
+  title: string;
+  daysOfWeek: number[]; // FullCalendar：0=周日..6=周六
+  startTime: string;
+  endTime: string;
+  color: string;
+  courseId: string | null;
+};
