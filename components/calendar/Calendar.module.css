@@ -316,6 +316,67 @@
   background: #f2f8ff;
 }
 
+/* 悬停快速预览卡 */
+.hoverCard {
+  position: fixed;
+  z-index: 70;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 240px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(14, 24, 39, 0.28);
+  font-size: 12px;
+}
+.hoverCard strong {
+  font-size: 13px;
+  font-weight: 750;
+}
+.hoverTime {
+  color: #c9d4e6;
+}
+.hoverMeta,
+.hoverMeet {
+  color: #aeb9cc;
+  font-size: 11px;
+}
+.hoverMeet {
+  color: #ffd84d;
+}
+
+/* 进入会议按钮 */
+.joinBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #e4f0fe;
+  border: 1px solid #b9d6f7;
+  color: #2f6db5;
+  font-size: 13px;
+  font-weight: 750;
+  text-decoration: none;
+  width: fit-content;
+}
+.joinBtn:hover {
+  background: #d4e7fd;
+}
+.detailLink {
+  border: 0;
+  background: none;
+  color: #5b9be0;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
 @media (max-width: 720px) {
   .row {
     flex-direction: column;

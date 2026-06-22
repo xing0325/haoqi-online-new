@@ -28,6 +28,7 @@ import {
   updateSeries,
 } from "@/lib/data";
 import { buildRRule, describeRRule, parseRRule } from "@/lib/recurrence";
+import { detectMeetingLink } from "@/lib/meeting";
 import type { CalInstance, Calendar as Cal, EditScope, Recurrence, RecurFreq, ScheduleRecurring } from "@/lib/types";
 import s from "./Calendar.module.css";
 import "./calendar-theme.css";
@@ -76,6 +77,15 @@ const VIEWS: { key: string; label: string }[] = [
 function toLocalInput(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function fmtRange(start: Date | null, end: Date | null, allDay?: boolean): string {
+  if (!start) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  const d = `${start.getMonth() + 1}/${start.getDate()}`;
+  if (allDay) return `${d} 全天`;
+  const t = (x: Date) => `${p(x.getHours())}:${p(x.getMinutes())}`;
+  return `${d} ${t(start)}${end ? "–" + t(end) : ""}`;
 }
 
 function dateKey(iso: string): string {
@@ -153,6 +163,14 @@ export default function CalendarBoard() {
   const [scopeAsk, setScopeAsk] = useState<ScopeAsk>(null);
   const [toast, setToast] = useState<{ msg: string; undo: (() => void) | null } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [hover, setHover] = useState<{
+    x: number;
+    y: number;
+    title: string;
+    time: string;
+    location: string | null;
+    meeting: string | null;
+  } | null>(null);
 
   const layersRef = useRef(layers);
   layersRef.current = layers;
@@ -346,6 +364,20 @@ export default function CalendarBoard() {
             }
           }
         },
+        eventMouseEnter: (info) => {
+          const ep = info.event.extendedProps as Record<string, unknown>;
+          const loc = (ep.location as string) || "";
+          const meeting = detectMeetingLink(loc || info.event.title);
+          setHover({
+            x: info.jsEvent.clientX,
+            y: info.jsEvent.clientY,
+            title: info.event.title,
+            time: fmtRange(info.event.start, info.event.end, info.event.allDay),
+            location: loc || null,
+            meeting: meeting?.provider ?? null,
+          });
+        },
+        eventMouseLeave: () => setHover(null),
       });
       calRef.current = cal;
       cal.render();
@@ -666,6 +698,14 @@ export default function CalendarBoard() {
     return rec ? describeRRule(buildRRule(rec, startISO), startISO) : "";
   })();
 
+  const formMeeting = form ? detectMeetingLink(form.location || form.title) : null;
+  const detailHref =
+    form && form.mode === "edit"
+      ? `/event?id=${form.isRecurring ? form.masterId : form.instanceId}${
+          form.isRecurring && form.occurrenceStart ? `&occ=${encodeURIComponent(form.occurrenceStart)}` : ""
+        }`
+      : null;
+
   if (!session) return null;
 
   return (
@@ -737,6 +777,15 @@ export default function CalendarBoard() {
               撤销
             </button>
           )}
+        </div>
+      )}
+
+      {hover && (
+        <div className={s.hoverCard} style={{ left: hover.x + 14, top: hover.y + 14 }}>
+          <strong>{hover.title}</strong>
+          <span className={s.hoverTime}>{hover.time}</span>
+          {hover.location && <span className={s.hoverMeta}>地点 · {hover.location}</span>}
+          {hover.meeting && <span className={s.hoverMeet}>会议 · {hover.meeting}</span>}
         </div>
       )}
 
@@ -815,8 +864,13 @@ export default function CalendarBoard() {
             </div>
             <label className={s.field}>
               地点
-              <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="可空" />
+              <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="可空（贴会议链接会自动识别）" />
             </label>
+            {formMeeting && (
+              <a className={s.joinBtn} href={formMeeting.url} target="_blank" rel="noopener noreferrer">
+                进入会议 · {formMeeting.provider} ↗
+              </a>
+            )}
 
             <div className={s.recurBox}>
               <label className={s.field}>
@@ -879,6 +933,11 @@ export default function CalendarBoard() {
               {form.mode === "edit" && (
                 <button type="button" className={s.del} onClick={removeEvent}>
                   删除
+                </button>
+              )}
+              {detailHref && (
+                <button type="button" className={s.detailLink} onClick={() => router.push(detailHref)}>
+                  详情 ↗
                 </button>
               )}
               <span style={{ flex: 1 }} />
