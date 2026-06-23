@@ -5,6 +5,21 @@
 
 ---
 
+## 更新 2026-06-24：日历 UI 调整（任务→tab / 事件成条 / 拖动成条）+ 下一步=多轨排序
+
+本轮按负责人反馈做的 UI 调整（已上线、浏览器实测、`npm test` 57 绿、build 过）：
+- **任务改成顶部 tab**：原任务停车场在日历上方，现为「日历 / 任务」tab（任务带未安排数徽标），默认日历、**第一屏即日历**（紧凑顶部、去掉大标题 hero，日历位置 fcTop 925→227）。切到任务时日历容器仅 `display:none` 不卸载（保 FC 实例），切回 `calRef.current.updateSize()`。代码：`CalendarBoard.tsx` 的 `pane` state + `s.tabBar/tab/tabOn/tabBadge`（`Calendar.module.css`）。
+- **月视图事件→彩色条**：`eventDisplay:'block'` + `views.dayGridMonth.displayEventTime=false` → 单日/多日都渲染成「彩色条框住标题」，不再"圆点+文字"（月视图实测 69 块状条、0 圆点）。
+- **拖动建日程→珊瑚条子**：不再整格刷蓝；`calendar-theme.css` 覆盖 `.fc .fc-daygrid-day-bg .fc-highlight`（`top:30px/height:22px/border/radius`，珊瑚色，specificity 0,3,0 胜 FC 默认）→ 拖选时是"拉出来的条子"。inject-test 实测 computed 22px 珊瑚条。
+
+### 🥇 下一步最该做：多轨排序（NLE 式）— 负责人明确要的
+负责人原话意思：像**剪辑软件多轨**一样，**自己决定哪条日程在上轨 / 下轨**（日程多时排版可控）。本轮已把"拖动刷蓝→珊瑚条子"改好，但**轨道顺序可控**还没做。建议：
+- **先 ship（免费、可逆）**：给 `Event` 加 `sort_order int`；FC 设 `eventOrder` 用它排序；交互先给"上移一轨 / 下移一轨"（事件卡右键或详情页按钮），持久化到 `sort_order`。无需真垂直拖拽即可让用户控轨序，先落价值。
+- **进阶（真垂直拖到指定轨）**：FC daygrid 的 `eventDrop` 只给"落到哪天"不给"第几轨"，要自定义命中测试（较重）；或上 FC premium `resourceTimeline`（**付费插件**，行=轨/资源）——它同时也是愿景里的「空间视角（场地×时间）」视图。**先确认负责人愿不愿付费**再定。
+- 这与愿景里"空间视角日历（场地为轨）"是近亲，做的时候一起想。
+
+---
+
 ## 更新 2026-06-23：切片 1.5 已上线（重复事件 + 滴答清单全套视图）
 
 - **spec**：`docs/specs/2026-06-23-calendar-recurring-views-design.md`；**plan**：`docs/plans/2026-06-23-calendar-recurring-views.md`。
