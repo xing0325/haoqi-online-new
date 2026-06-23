@@ -86,19 +86,9 @@
 .fc-event.fc-live {
   animation: fc-breathe 2.4s ease-in-out infinite;
 }
-/* 拖动建日程：不要整格刷蓝。时间网格里是时间块；月视图里是"拉出来的条子"（珊瑚=新建动作色） */
+/* 拖动建日程：柔珊瑚选区（不是刺眼蓝；也不做会被事件盖住的固定背景条——真正的"条"靠多轨真事件渲染） */
 .fc .fc-highlight {
-  background: rgba(239, 120, 94, 0.16);
-}
-.fc .fc-daygrid-day-bg .fc-highlight {
-  top: 30px;
-  bottom: auto;
-  height: 22px;
-  left: 2px;
-  right: 2px;
-  border: 1px solid rgba(239, 120, 94, 0.6);
-  border-radius: 6px;
-  background: rgba(239, 120, 94, 0.2);
+  background: rgba(239, 120, 94, 0.14);
 }
 .fc .fc-timegrid-now-indicator-arrow {
   border-color: #ee725c;

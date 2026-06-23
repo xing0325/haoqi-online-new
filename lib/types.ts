@@ -137,6 +137,7 @@ export type CalEvent = {
   recurUntil: string | null; // 母事件末次出现起始（范围查询剪枝用）
   seriesId: string | null; // 子行 → 母事件 id
   occurrenceStart: string | null; // 子行覆盖的"那次"的原始起始（recurrence-id）
+  sortOrder: number; // 多轨道：越小越靠上轨（FC eventOrder 用）
 };
 
 /** 改/删重复事件的作用范围。 */
@@ -170,6 +171,7 @@ export type CalInstance = {
   location: string | null;
   isRecurring: boolean;
   seriesRrule: string | null; // 母事件的 RRULE（给编辑器回填精简档）；单次/无母为 null
+  sortOrder: number; // 多轨道排序
 };
 
 export type TaskStatus = "todo" | "done";

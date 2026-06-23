@@ -38,6 +38,7 @@ function row(p: Partial<CalEvent> & { id: string }): CalEvent {
     recurUntil: p.recurUntil ?? null,
     seriesId: p.seriesId ?? null,
     occurrenceStart: p.occurrenceStart ?? null,
+    sortOrder: p.sortOrder ?? 0,
   };
 }
 

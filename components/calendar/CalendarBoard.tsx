@@ -50,6 +50,7 @@ type FormState = {
   occurrenceStart?: string | null;
   isRecurring?: boolean;
   seriesRrule?: string | null;
+  sortOrder?: number; // 多轨道当前轨序
   // 字段
   title: string;
   start: string; // datetime-local
@@ -244,7 +245,7 @@ export default function CalendarBoard() {
           textColor: "#18243b",
           editable: false,
           classNames: ["fc-course"],
-          extendedProps: { courseId: c.courseId, isCourse: true },
+          extendedProps: { courseId: c.courseId, isCourse: true, sortOrder: -1 }, // 课表默认在最上轨
         } as EventInput);
       }
     }
@@ -287,6 +288,7 @@ export default function CalendarBoard() {
           masterId: e.masterId,
           occurrenceStart: e.occurrenceStart,
           seriesRrule: e.seriesRrule,
+          sortOrder: e.sortOrder,
         },
       });
     }
@@ -340,6 +342,7 @@ export default function CalendarBoard() {
         height: "auto",
         dayMaxEvents: true, // 月视图溢出 "+N"
         eventDisplay: "block", // 事件一律渲染成彩色条（含单日定时），不要"圆点+文字"
+        eventOrder: "sortOrder,start", // 多轨道：用户用 sort_order 决定哪条在上轨/下轨
         headerToolbar: { left: "prev,next today", center: "title", right: "" },
         views: { multiMonthYear: { multiMonthMaxColumns: 3 }, dayGridMonth: { displayEventTime: false } },
         selectable: true,
@@ -518,6 +521,7 @@ export default function CalendarBoard() {
       occurrenceStart: (ep.occurrenceStart as string | null) ?? null,
       isRecurring: Boolean(ep.isRecurring),
       seriesRrule,
+      sortOrder: (ep.sortOrder as number) ?? 0,
       title: ev.title,
       start: toLocalInput(start),
       end: toLocalInput(ev.end ?? start),
@@ -528,6 +532,22 @@ export default function CalendarBoard() {
       allDay: ev.allDay ?? false,
       ...recur,
     });
+  }
+
+  // 多轨道：上移/下移一轨（sort_order 越小越靠上）。重复→改母系列；单次→改本行。
+  async function nudgeTrack(delta: number) {
+    if (!form?.instanceId) return;
+    const next = (form.sortOrder ?? 0) + delta;
+    const res =
+      form.isRecurring && form.masterId
+        ? await updateSeries(form.masterId, { sortOrder: next })
+        : await updateEvent(form.instanceId, { sortOrder: next });
+    if ("error" in res) {
+      showToast(res.error, null);
+      return;
+    }
+    setForm({ ...form, sortOrder: next });
+    await fetchAndRebuild();
   }
 
   async function toggleDone(ev: { id: string; title: string; start: Date | null; end: Date | null; extendedProps: Record<string, unknown> }) {
@@ -1095,6 +1115,19 @@ export default function CalendarBoard() {
               )}
               {recurPreview && <p className={s.recurPreview}>↻ {recurPreview}</p>}
             </div>
+
+            {form.mode === "edit" && (
+              <div className={s.trackRow}>
+                <span className={s.trackLabel}>轨道</span>
+                <button type="button" className={s.trackBtn} onClick={() => nudgeTrack(-1)}>
+                  ⬆ 上移一轨
+                </button>
+                <button type="button" className={s.trackBtn} onClick={() => nudgeTrack(1)}>
+                  ⬇ 下移一轨
+                </button>
+                <span className={s.trackHint}>日程多时决定这条在上轨/下轨</span>
+              </div>
+            )}
 
             <div className={s.modalActions}>
               {form.mode === "edit" && (

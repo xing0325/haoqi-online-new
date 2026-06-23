@@ -243,6 +243,38 @@
   color: var(--ink);
 }
 
+/* 编辑表单里的"轨道"上移/下移（多轨道排序） */
+.trackRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.trackLabel {
+  font-size: 12px;
+  font-weight: 750;
+  color: #6b7789;
+}
+.trackBtn {
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.trackBtn:hover {
+  background: #f4f7fb;
+}
+.trackHint {
+  font-size: 11px;
+  color: #98a2b3;
+}
+
 /* 底部漂浮"药丸"视图切换 */
 .pills {
   position: sticky;

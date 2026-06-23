@@ -119,6 +119,7 @@ function single(r: CalEvent): CalInstance {
     location: r.location,
     isRecurring: false,
     seriesRrule: null,
+    sortOrder: r.sortOrder,
   };
 }
 
@@ -138,6 +139,7 @@ function masterInstance(m: CalEvent, occ: Date, durationMs: number, occISO: stri
     location: m.location,
     isRecurring: true,
     seriesRrule: m.rrule,
+    sortOrder: m.sortOrder,
   };
 }
 
@@ -146,6 +148,7 @@ function overrideInstance(
   child: CalEvent,
   occISO: string,
   masterRrule: string | null,
+  masterSortOrder: number,
 ): CalInstance {
   return {
     instanceId: `${masterId}::${occISO}`,
@@ -162,6 +165,7 @@ function overrideInstance(
     location: child.location,
     isRecurring: true,
     seriesRrule: masterRrule,
+    sortOrder: masterSortOrder,
   };
 }
 
@@ -176,6 +180,7 @@ export function expandWindow(rows: CalEvent[], fromISO: string, toISO: string): 
   const masters = rows.filter((r) => r.rrule && !r.seriesId);
   const children = rows.filter((r) => r.seriesId && r.occurrenceStart);
   const masterRruleById = new Map(masters.map((m) => [m.id, m.rrule] as const));
+  const masterSortById = new Map(masters.map((m) => [m.id, m.sortOrder] as const));
 
   // seriesId → occISO → child
   const childIndex = new Map<string, Map<string, CalEvent>>();
@@ -205,7 +210,7 @@ export function expandWindow(rows: CalEvent[], fromISO: string, toISO: string): 
       const child = cidx?.get(occISO);
       if (child) {
         if (child.status === "cancelled") continue; // exception：删一次
-        out.push(overrideInstance(m.id, child, occISO, m.rrule)); // override：改一次
+        out.push(overrideInstance(m.id, child, occISO, m.rrule, m.sortOrder)); // override：改一次
       } else {
         out.push(masterInstance(m, occ, durationMs, occISO));
       }
@@ -218,7 +223,7 @@ export function expandWindow(rows: CalEvent[], fromISO: string, toISO: string): 
     const occISO = new Date(c.occurrenceStart!).toISOString();
     if (consumed.has(`${c.seriesId}::${occISO}`)) continue;
     if (new Date(c.startsAt).getTime() < toMs && new Date(c.endsAt).getTime() > fromMs) {
-      out.push(overrideInstance(c.seriesId!, c, occISO, masterRruleById.get(c.seriesId!) ?? null));
+      out.push(overrideInstance(c.seriesId!, c, occISO, masterRruleById.get(c.seriesId!) ?? null, masterSortById.get(c.seriesId!) ?? c.sortOrder));
     }
   }
 

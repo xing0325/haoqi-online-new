@@ -332,7 +332,7 @@ const COURSE_HEX: Record<string, string> = {
 };
 
 const EVENT_COLS =
-  "id, calendar_id, title, starts_at, ends_at, all_day, kind, status, location, rrule, recur_until, series_id, occurrence_start";
+  "id, calendar_id, title, starts_at, ends_at, all_day, kind, status, location, rrule, recur_until, series_id, occurrence_start, sort_order";
 
 // 去掉 RRULE 尾部结束边界(UNTIL/COUNT)，只留影响"发生时刻网格"的部分（判断是否需清旧覆盖用）。
 const stripEndParts = (r: string | null | undefined): string =>
@@ -353,6 +353,7 @@ function toCalEvent(e: any): CalEvent {
     recurUntil: e.recur_until ?? null,
     seriesId: e.series_id ?? null,
     occurrenceStart: e.occurrence_start ?? null,
+    sortOrder: e.sort_order ?? 0,
   };
 }
 
@@ -513,6 +514,7 @@ export async function updateEvent(
     kind?: "event" | "timeblock";
     status?: "draft" | "confirmed" | "done" | "cancelled";
     location?: string | null;
+    sortOrder?: number;
   },
 ): Promise<{ ok: true } | { error: string }> {
   const row: any = {};
@@ -523,6 +525,7 @@ export async function updateEvent(
   if (patch.kind !== undefined) row.kind = patch.kind;
   if (patch.status !== undefined) row.status = patch.status;
   if (patch.location !== undefined) row.location = patch.location;
+  if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder;
   const { error } = await supabase().from("Event").update(row).eq("id", id);
   return error ? { error: "保存失败" } : { ok: true };
 }
@@ -558,6 +561,7 @@ export async function updateSeries(
     status?: EventStatus;
     location?: string | null;
     recurrence?: Recurrence | null;
+    sortOrder?: number;
   },
 ): Promise<{ ok: true } | { error: string }> {
   // 取旧值：判断"发生时刻网格"是否变了，决定要不要清失配的旧单次覆盖。
@@ -572,6 +576,7 @@ export async function updateSeries(
   if (patch.kind !== undefined) row.kind = patch.kind;
   if (patch.status !== undefined) row.status = patch.status;
   if (patch.location !== undefined) row.location = patch.location;
+  if (patch.sortOrder !== undefined) row.sort_order = patch.sortOrder;
   let newRrule: string | null | undefined;
   if (patch.recurrence !== undefined) {
     // 改/清规律不依赖 patch.startsAt：缺省回退旧起始（否则只改规律会被静默吞掉）。
