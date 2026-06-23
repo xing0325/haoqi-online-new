@@ -183,6 +183,7 @@ export default function CalendarBoard() {
   } | null>(null);
   const [nlText, setNlText] = useState("");
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [pane, setPane] = useState<"calendar" | "tasks">("calendar"); // 第一屏=日历；任务做成 tab
 
   const layersRef = useRef(layers);
   layersRef.current = layers;
@@ -304,6 +305,11 @@ export default function CalendarBoard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layers, showDone, showExpired]);
 
+  // 切回日历 tab 时日历容器从 display:none 变可见，FC 需重算尺寸
+  useEffect(() => {
+    if (pane === "calendar") requestAnimationFrame(() => calRef.current?.updateSize());
+  }, [pane]);
+
   useEffect(() => {
     if (!session || !elRef.current) return;
     let alive = true;
@@ -333,8 +339,9 @@ export default function CalendarBoard() {
         expandRows: true,
         height: "auto",
         dayMaxEvents: true, // 月视图溢出 "+N"
+        eventDisplay: "block", // 事件一律渲染成彩色条（含单日定时），不要"圆点+文字"
         headerToolbar: { left: "prev,next today", center: "title", right: "" },
-        views: { multiMonthYear: { multiMonthMaxColumns: 3 } },
+        views: { multiMonthYear: { multiMonthMaxColumns: 3 }, dayGridMonth: { displayEventTime: false } },
         selectable: true,
         selectMirror: true,
         editable: true,
@@ -819,83 +826,98 @@ export default function CalendarBoard() {
         }`
       : null;
 
+  const todoCount = tasks.filter((t) => t.status === "todo" && !t.scheduledEventId).length;
+
   if (!session) return null;
 
   return (
     <section className={s.view}>
       <div className={s.head}>
-        <p className={s.eyebrow}>MY WEEK / 我的一周</p>
-        <h1>
-          把时间切成<i> 舒服的样子。</i>
-        </h1>
-        <svg className={s.cloud} viewBox="0 0 120 48" aria-hidden="true">
-          <path
-            d="M30 38c-11 0-19-7-19-16 0-8 6-14 14-15 3-7 10-12 18-12 10 0 18 7 20 16 7 1 12 6 12 13 0 8-7 14-16 14H30z"
-            fill="#eef3fb"
-            stroke="#d6e2f2"
-          />
-        </svg>
-      </div>
-
-      <div className={s.controls}>
-        <div className={s.legend}>
-          {(["course", "personal", "work"] as const).map((k) => (
-            <label key={k} className={s.legendItem}>
-              <input type="checkbox" checked={layers[k]} onChange={(e) => setLayers((p) => ({ ...p, [k]: e.target.checked }))} />
-              <span className={`${s.dot} ${s["dot_" + k]}`} />
-              {k === "course" ? "课表" : k === "personal" ? "私人" : "工作"}
-            </label>
-          ))}
-        </div>
-        <div className={s.toggles}>
-          <label className={s.legendItem}>
-            <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> 显示已完成
-          </label>
-          <label className={s.legendItem}>
-            <input type="checkbox" checked={showExpired} onChange={(e) => setShowExpired(e.target.checked)} /> 显示已过期
-          </label>
-        </div>
-      </div>
-
-      <p className={s.hint}>课表只读（拖不动）。点空白新建，双击改，拖动改时间、拉伸改时长（15 分钟吸附）。重复日程带 ↻。</p>
-
-      <div className={s.nlBar}>
-        <span className={s.nlSpark} aria-hidden="true">
-          ✨
-        </span>
-        <input
-          className={s.nlInput}
-          value={nlText}
-          onChange={(e) => setNlText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") nlCreate();
-          }}
-          placeholder="用一句话建日程：明天下午3点开会 / 每周三晚7点排练 / 6月30号下午2点答辩"
-          aria-label="用一句话建日程"
-        />
-        <button type="button" className={s.nlBtn} onClick={nlCreate}>
-          建
-        </button>
-      </div>
-
-      <TasksPanel tasks={tasks} onAdd={addTask} onToggle={toggleTask} onDelete={deleteTask} onSchedule={scheduleTaskToForm} />
-
-      <div ref={elRef} className={s.cal} />
-
-      <div className={s.pills} role="tablist" aria-label="视图切换">
-        {VIEWS.map((v) => (
+        <p className={s.eyebrow}>我的一周 · MY WEEK</p>
+        <div className={s.tabBar} role="tablist" aria-label="日历 / 任务">
           <button
-            key={v.key}
             type="button"
             role="tab"
-            aria-selected={view === v.key}
-            className={`${s.pill} ${view === v.key ? s.pillOn : ""}`}
-            onClick={() => switchView(v.key)}
+            aria-selected={pane === "calendar"}
+            className={`${s.tab} ${pane === "calendar" ? s.tabOn : ""}`}
+            onClick={() => setPane("calendar")}
           >
-            {v.label}
+            日历
           </button>
-        ))}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={pane === "tasks"}
+            className={`${s.tab} ${pane === "tasks" ? s.tabOn : ""}`}
+            onClick={() => setPane("tasks")}
+          >
+            任务{todoCount > 0 && <span className={s.tabBadge}>{todoCount}</span>}
+          </button>
+        </div>
       </div>
+
+      {/* 日历面板（始终挂载，切到任务时仅隐藏，保住 FullCalendar 实例） */}
+      <div style={{ display: pane === "calendar" ? undefined : "none" }}>
+        <div className={s.controls}>
+          <div className={s.legend}>
+            {(["course", "personal", "work"] as const).map((k) => (
+              <label key={k} className={s.legendItem}>
+                <input type="checkbox" checked={layers[k]} onChange={(e) => setLayers((p) => ({ ...p, [k]: e.target.checked }))} />
+                <span className={`${s.dot} ${s["dot_" + k]}`} />
+                {k === "course" ? "课表" : k === "personal" ? "私人" : "工作"}
+              </label>
+            ))}
+          </div>
+          <div className={s.toggles}>
+            <label className={s.legendItem}>
+              <input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> 显示已完成
+            </label>
+            <label className={s.legendItem}>
+              <input type="checkbox" checked={showExpired} onChange={(e) => setShowExpired(e.target.checked)} /> 显示已过期
+            </label>
+          </div>
+        </div>
+
+        <div className={s.nlBar}>
+          <span className={s.nlSpark} aria-hidden="true">
+            ✨
+          </span>
+          <input
+            className={s.nlInput}
+            value={nlText}
+            onChange={(e) => setNlText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") nlCreate();
+            }}
+            placeholder="用一句话建日程：明天下午3点开会 / 每周三晚7点排练 / 6月30号下午2点答辩"
+            aria-label="用一句话建日程"
+          />
+          <button type="button" className={s.nlBtn} onClick={nlCreate}>
+            建
+          </button>
+        </div>
+
+        <div ref={elRef} className={s.cal} />
+
+        <div className={s.pills} role="tablist" aria-label="视图切换">
+          {VIEWS.map((v) => (
+            <button
+              key={v.key}
+              type="button"
+              role="tab"
+              aria-selected={view === v.key}
+              className={`${s.pill} ${view === v.key ? s.pillOn : ""}`}
+              onClick={() => switchView(v.key)}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {pane === "tasks" && (
+        <TasksPanel tasks={tasks} onAdd={addTask} onToggle={toggleTask} onDelete={deleteTask} onSchedule={scheduleTaskToForm} />
+      )}
 
       {toast && (
         <div className={s.toast}>
